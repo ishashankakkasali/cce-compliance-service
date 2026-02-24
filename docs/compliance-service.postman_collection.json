@@ -1,0 +1,151 @@
+{
+	"info": {
+		"_postman_id": "05559f6a-e24d-4153-a4b4-1b7fc6a7b045",
+		"name": "compliance-service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "2513339",
+		"_collection_link": "https://speeding-equinox-410104.postman.co/workspace/CCE~d79b454d-3983-4828-af5b-0cfea653f0cc/collection/2513339-05559f6a-e24d-4153-a4b4-1b7fc6a7b045?action=share&source=collection_link&creator=2513339"
+	},
+	"item": [
+		{
+			"name": "http://localhost:8080/v1/protocol-definitions",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"planDefinitionJson\": \"{\\\"resourceType\\\":\\\"PlanDefinition\\\",\\\"url\\\":\\\"http://openphc.org/cce/protocols/diabetes-monitoring\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"name\\\":\\\"DiabetesMonitoring\\\",\\\"title\\\":\\\"Diabetes Monitoring Protocol\\\",\\\"status\\\":\\\"active\\\",\\\"date\\\":\\\"2026-02-24\\\",\\\"description\\\":\\\"Quarterly HbA1c monitoring for diabetes patients\\\",\\\"action\\\":[{\\\"id\\\":\\\"hba1c-check\\\",\\\"title\\\":\\\"HbA1c Lab Test\\\",\\\"trigger\\\":[{\\\"type\\\":\\\"data-added\\\",\\\"data\\\":[{\\\"type\\\":\\\"Observation\\\",\\\"codeFilter\\\":[{\\\"path\\\":\\\"code\\\",\\\"code\\\":[{\\\"system\\\":\\\"http://loinc.org\\\",\\\"code\\\":\\\"4548-4\\\",\\\"display\\\":\\\"HbA1c\\\"}]}]}]}],\\\"timingTiming\\\":{\\\"repeat\\\":{\\\"frequency\\\":1,\\\"period\\\":3,\\\"periodUnit\\\":\\\"mo\\\"}}}]}\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/v1/protocol-definitions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"protocol-definitions"
+					]
+				},
+				"description": "Generated from cURL: curl -X POST http://localhost:8080/v1/protocol-definitions \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"planDefinitionJson\": \"{\\\"resourceType\\\":\\\"PlanDefinition\\\",\\\"url\\\":\\\"http://openphc.org/cce/protocols/diabetes-monitoring\\\",\\\"version\\\":\\\"1.0.0\\\",\\\"name\\\":\\\"DiabetesMonitoring\\\",\\\"title\\\":\\\"Diabetes Monitoring Protocol\\\",\\\"status\\\":\\\"active\\\",\\\"date\\\":\\\"2026-02-24\\\",\\\"description\\\":\\\"Quarterly HbA1c monitoring for diabetes patients\\\",\\\"action\\\":[{\\\"id\\\":\\\"hba1c-check\\\",\\\"title\\\":\\\"HbA1c Lab Test\\\",\\\"trigger\\\":[{\\\"type\\\":\\\"data-added\\\",\\\"data\\\":[{\\\"type\\\":\\\"Observation\\\",\\\"codeFilter\\\":[{\\\"path\\\":\\\"code\\\",\\\"code\\\":[{\\\"system\\\":\\\"http://loinc.org\\\",\\\"code\\\":\\\"4548-4\\\",\\\"display\\\":\\\"HbA1c\\\"}]}]}]}],\\\"timingTiming\\\":{\\\"repeat\\\":{\\\"frequency\\\":1,\\\"period\\\":3,\\\"periodUnit\\\":\\\"mo\\\"}}}]}\"\n  }'"
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/v1/protocol-definitions/09b154ca-071a-4f52-8af0-05e0a9d5346b",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/protocol-definitions/09b154ca-071a-4f52-8af0-05e0a9d5346b",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"protocol-definitions",
+						"09b154ca-071a-4f52-8af0-05e0a9d5346b"
+					]
+				},
+				"description": "Generated from cURL: curl -s http://localhost:8080/v1/protocol-definitions/09b154ca-071a-4f52-8af0-05e0a9d5346b | python3 -m json.tool"
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/v1/protocol-definitions",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/protocol-definitions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"protocol-definitions"
+					]
+				},
+				"description": "Generated from cURL: curl -s http://localhost:8080/v1/protocol-definitions | python3 -m json.tool"
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/v1/protocol-definitions/by-url?url=http://openphc.org/cce/protocols/diabetes-monitoring",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/protocol-definitions/by-url?url=http://openphc.org/cce/protocols/diabetes-monitoring",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"protocol-definitions",
+						"by-url"
+					],
+					"query": [
+						{
+							"key": "url",
+							"value": "http://openphc.org/cce/protocols/diabetes-monitoring"
+						}
+					]
+				},
+				"description": "Generated from cURL: curl -s \"http://localhost:8080/v1/protocol-definitions/by-url?url=http://openphc.org/cce/protocols/diabetes-monitoring\" | python3 -m json.tool"
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/v1/protocol-definitions/by-url-version?url=http://openphc.org/cce/protocols/diabetes-monitoring&ve",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/v1/protocol-definitions/by-url-version?url=http://openphc.org/cce/protocols/diabetes-monitoring&version=1.0.0",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"v1",
+						"protocol-definitions",
+						"by-url-version"
+					],
+					"query": [
+						{
+							"key": "url",
+							"value": "http://openphc.org/cce/protocols/diabetes-monitoring"
+						},
+						{
+							"key": "version",
+							"value": "1.0.0"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

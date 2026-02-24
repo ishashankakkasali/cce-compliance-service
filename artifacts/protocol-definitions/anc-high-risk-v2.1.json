@@ -1,0 +1,527 @@
+{
+  "resourceType": "PlanDefinition",
+  "url": "http://openphc.org/fhir/PlanDefinition/anc-high-risk",
+  "version": "2.1",
+  "name": "ANCHighRisk",
+  "title": "ANC High-Risk Monitoring Protocol",
+  "status": "active",
+  "date": "2026-01-01",
+  "description": "Comprehensive antenatal care monitoring protocol for high-risk pregnancies. Tracks ANC visits, vital signs (high BP detection), lab orders/results, monthly checkups, and community health worker home visits.",
+  "action": [
+    {
+      "id": "enrollment",
+      "title": "ANC Program Enrollment",
+      "description": "Patient is enrolled in the ANC high-risk protocol when an EpisodeOfCare of type 'anc-enrollment' is created.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "EpisodeOfCare",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/episode-types",
+                      "code": "anc-enrollment"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "active"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anc-visit-1",
+      "title": "ANC Visit 1 — Initial Assessment",
+      "description": "First antenatal care visit. Ambulatory encounter with high-risk ANC service type. Must be completed before visit 2 can be instantiated.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "anc-visit"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "class",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                      "code": "AMB"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "high-risk-anc"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "wk"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 7
+        }
+      ]
+    },
+    {
+      "id": "anc-visit-2",
+      "title": "ANC Visit 2 — Follow-Up Assessment",
+      "description": "Second antenatal care visit at 8 weeks post-enrollment. Depends on anc-visit-1 completion (progressive instantiation).",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "anc-visit"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "class",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                      "code": "AMB"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "high-risk-anc"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 8,
+            "unit": "wk"
+          }
+        },
+        {
+          "actionId": "anc-visit-1",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 5
+        }
+      ]
+    },
+    {
+      "id": "anc-visit-3",
+      "title": "ANC Visit 3 — Third Trimester Assessment",
+      "description": "Third antenatal care visit at 20 weeks post-enrollment. Depends on anc-visit-2 completion. Used by explicit routing test (Event 13).",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "anc-visit"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "class",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                      "code": "AMB"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "high-risk-anc"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 20,
+            "unit": "wk"
+          }
+        },
+        {
+          "actionId": "anc-visit-2",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 5
+        }
+      ]
+    },
+    {
+      "id": "high-bp-followup",
+      "title": "High Blood Pressure Follow-Up",
+      "description": "Optional step triggered when systolic blood pressure observation exceeds 140 mmHg. Uses Tier 2 JSONLogic condition for value threshold check.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Observation",
+              "codeFilter": [
+                {
+                  "path": "category",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "vital-signs"
+                    }
+                  ]
+                },
+                {
+                  "path": "code",
+                  "code": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "8480-6"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "final"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\">\": [{\"var\": \"resource.valueQuantity.value\"}, 140]}"
+          }
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 0
+        }
+      ]
+    },
+    {
+      "id": "monthly-checkup",
+      "title": "Monthly ANC Checkup",
+      "description": "Recurring monthly encounter (6 total). Each completion triggers instantiation of the next repeat instance.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "anc-monthly-checkup"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "class",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                      "code": "AMB"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "high-risk-anc"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "timingTiming": {
+        "repeat": {
+          "count": 6,
+          "frequency": 1,
+          "period": 1,
+          "periodUnit": "mo"
+        }
+      },
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 1,
+            "unit": "mo"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 5
+        }
+      ]
+    },
+    {
+      "id": "lab-order",
+      "title": "Laboratory Order — Full Blood Count",
+      "description": "ServiceRequest for laboratory procedure (FBC). Triggered when a lab order is placed during an ANC visit.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "ServiceRequest",
+              "codeFilter": [
+                {
+                  "path": "category",
+                  "code": [
+                    {
+                      "system": "http://snomed.info/sct",
+                      "code": "108252007"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "active"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\"==\": [{\"var\": \"resource.intent\"}, \"order\"]}"
+          }
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "lab-result",
+      "title": "Laboratory Result — CBC Panel",
+      "description": "Observation with completed CBC lab result. Can arrive at any point after enrollment.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Observation",
+              "codeFilter": [
+                {
+                  "path": "category",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                      "code": "laboratory"
+                    }
+                  ]
+                },
+                {
+                  "path": "code",
+                  "code": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "58410-2"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "final"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chw-home-visit",
+      "title": "Community Health Worker Home Visit",
+      "description": "Non-FHIR event from CHW mobile app reporting an ANC home visit. Uses named-event trigger with JSONLogic condition matching visit_type and status fields.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "named-event",
+          "name": "home-visit-completed",
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\"and\": [{\"==\": [{\"var\": \"resource.visit_type\"}, \"anc-home-visit\"]}, {\"==\": [{\"var\": \"resource.status\"}, \"completed\"]}]}"
+          }
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: cce-compliance-service-test
+
+  # JPA — let Hibernate create DDL for tests (avoids Flyway migration issues with H2/test DB)
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+
+  # Disable Flyway for tests (use Hibernate DDL)
+  flyway:
+    enabled: false
+
+  # Kafka — overridden by @EmbeddedKafka
+  kafka:
+    consumer:
+      group-id: cce-compliance-service-test
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual
+      concurrency: 1
+
+  # Redis — disabled for tests
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Server
+server:
+  port: 0
+
+# CCE Kafka Topics
+cce:
+  kafka:
+    topics:
+      inbound-events: cce.events.inbound
+      scheduler-triggers: cce.scheduler.triggers
+      intelligence-triggers: cce.intelligence.triggers
+      protocol-control: cce.protocol.control
+      dead-letter: cce.deadletter
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    org.openphc.cce.compliance: DEBUG
+    org.springframework.kafka: WARN
+    org.testcontainers: INFO
+    org.hibernate.SQL: DEBUG

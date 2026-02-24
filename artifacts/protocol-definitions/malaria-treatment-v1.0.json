@@ -1,0 +1,208 @@
+{
+  "resourceType": "PlanDefinition",
+  "url": "http://openphc.org/fhir/PlanDefinition/malaria-treatment",
+  "version": "1.0",
+  "name": "MalariaTreatment",
+  "title": "Malaria Treatment Protocol",
+  "status": "active",
+  "date": "2026-01-01",
+  "description": "Treatment compliance protocol for confirmed malaria (Plasmodium malariae, ICD-11 1F42). Tracks the care pathway from diagnosis through antimalarial prescription, medication dispensing, and 7-day follow-up visit.",
+  "action": [
+    {
+      "id": "enrollment",
+      "title": "Malaria Diagnosis Confirmed",
+      "description": "Protocol enrollment triggered by a confirmed malaria diagnosis (Condition with ICD-11 code 1F42, clinicalStatus active, verificationStatus confirmed).",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Condition",
+              "codeFilter": [
+                {
+                  "path": "code",
+                  "code": [
+                    {
+                      "system": "https://icd.who.int",
+                      "code": "1F42"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\"and\": [{\"==\": [{\"var\": \"resource.clinicalStatus.coding.0.code\"}, \"active\"]}, {\"==\": [{\"var\": \"resource.verificationStatus.coding.0.code\"}, \"confirmed\"]}]}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "prescribe-antimalarial",
+      "title": "Prescribe Antimalarial Medication",
+      "description": "MedicationRequest for Artemether-Lumefantrine (SNOMED 429681001). Must be prescribed within same day as diagnosis.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "MedicationRequest",
+              "codeFilter": [
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "active"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\"and\": [{\"==\": [{\"var\": \"resource.intent\"}, \"order\"]}, {\"some\": [{\"var\": \"resource.medicationCodeableConcept.coding\"}, {\"==\": [{\"var\": \"code\"}, \"429681001\"]}]}]}"
+          }
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 1
+        }
+      ]
+    },
+    {
+      "id": "dispense-medication",
+      "title": "Dispense Antimalarial Medication",
+      "description": "MedicationDispense confirming pharmacy has dispensed Artemether-Lumefantrine. Depends on prescribe-antimalarial completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "MedicationDispense",
+              "codeFilter": [
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "condition": {
+            "language": "text/jsonlogic",
+            "expression": "{\"some\": [{\"var\": \"resource.medicationCodeableConcept.coding\"}, {\"==\": [{\"var\": \"code\"}, \"429681001\"]}]}"
+          }
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        },
+        {
+          "actionId": "prescribe-antimalarial",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 1
+        }
+      ]
+    },
+    {
+      "id": "follow-up-visit",
+      "title": "7-Day Follow-Up Visit",
+      "description": "Ambulatory follow-up encounter 7 days after treatment to confirm patient recovery. Depends on medication dispensing completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "follow-up-visit"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "class",
+                  "code": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                      "code": "AMB"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "malaria-followup"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 7,
+            "unit": "d"
+          }
+        },
+        {
+          "actionId": "dispense-medication",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 3
+        }
+      ]
+    }
+  ]
+}

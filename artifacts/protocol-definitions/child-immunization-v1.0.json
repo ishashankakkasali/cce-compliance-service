@@ -1,0 +1,312 @@
+{
+  "resourceType": "PlanDefinition",
+  "url": "http://openphc.org/fhir/PlanDefinition/child-immunization",
+  "version": "1.0",
+  "name": "ChildImmunization",
+  "title": "Child Immunization Schedule Protocol",
+  "status": "active",
+  "date": "2026-01-01",
+  "description": "Rwanda national child immunization schedule compliance protocol. Tracks BCG at birth, Pentavalent (DPT-HepB-Hib) doses at 6, 10, and 14 weeks, OPV, Rotavirus, PCV, Measles-Rubella, and other EPI vaccines per Rwanda Ministry of Health guidelines.",
+  "action": [
+    {
+      "id": "enrollment",
+      "title": "Child Immunization Enrollment",
+      "description": "Protocol enrollment triggered by BCG vaccination at birth. The BCG immunization event simultaneously enrolls the child and completes the first step.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836380007"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bcg-vaccination",
+      "title": "BCG Vaccination (Birth)",
+      "description": "Bacillus Calmette-Guérin vaccine administered at birth. Same trigger as enrollment — the enrollment event also completes this step.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836380007"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 14
+        }
+      ]
+    },
+    {
+      "id": "penta-1",
+      "title": "Pentavalent 1 (DPT-HepB-Hib) — 6 Weeks",
+      "description": "First dose of Pentavalent vaccine (DPT-HepB-Hib) at 6 weeks of age. Depends on BCG vaccination completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836382004"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 6,
+            "unit": "wk"
+          }
+        },
+        {
+          "actionId": "bcg-vaccination",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 7
+        }
+      ]
+    },
+    {
+      "id": "penta-2",
+      "title": "Pentavalent 2 (DPT-HepB-Hib) — 10 Weeks",
+      "description": "Second dose of Pentavalent vaccine at 10 weeks of age. Depends on penta-1 completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836382004"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 10,
+            "unit": "wk"
+          }
+        },
+        {
+          "actionId": "penta-1",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 7
+        }
+      ]
+    },
+    {
+      "id": "penta-3",
+      "title": "Pentavalent 3 (DPT-HepB-Hib) — 14 Weeks",
+      "description": "Third and final dose of Pentavalent vaccine at 14 weeks of age. Depends on penta-2 completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836382004"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 14,
+            "unit": "wk"
+          }
+        },
+        {
+          "actionId": "penta-2",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 7
+        }
+      ]
+    },
+    {
+      "id": "measles-rubella-1",
+      "title": "Measles-Rubella 1 — 9 Months",
+      "description": "First dose of Measles-Rubella vaccine at 9 months of age. Depends on penta-3 completion.",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Immunization",
+              "codeFilter": [
+                {
+                  "path": "vaccineCode",
+                  "code": [
+                    {
+                      "system": "http://npc.rw",
+                      "code": "836382002"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 9,
+            "unit": "mo"
+          }
+        },
+        {
+          "actionId": "penta-3",
+          "relationship": "after-end"
+        }
+      ],
+      "extension": [
+        {
+          "url": "http://openphc.org/fhir/StructureDefinition/tolerance-days",
+          "valueInteger": 14
+        }
+      ]
+    }
+  ]
+}
