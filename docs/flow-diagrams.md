@@ -18,7 +18,7 @@ sequenceDiagram
     participant EventLog as EventLogService
     participant TriggerMatch as TriggerMatchingService
     participant Parser as PlanDefinitionParser
-    participant ExprEval as ExpressionEvaluationService<br/>(JSONLogic + CQL)
+    participant ExprEval as ExpressionEvaluationService<br/>(JSONLogic + CQL + FHIRPath)
     participant ProtoInst as ProtocolInstanceService
     participant StepInst as StepInstanceService
     participant Audit as AuditService
@@ -51,8 +51,8 @@ sequenceDiagram
         rect rgb(255, 248, 240)
             Note over Engine: Step 3 — Extract Resource Info
             Engine->>Engine: extractResourceType(data)
-            Engine->>Engine: extractCodeSystem(data)
-            Engine->>Engine: extractCodeValue(data)
+            Engine->>Engine: extractAllCodes(data)
+            Note over Engine: Extracts codes from code, type,<br/>category, clinicalStatus fields
         end
 
         rect rgb(248, 240, 255)
@@ -87,6 +87,24 @@ sequenceDiagram
                 StepInst->>DB: INSERT INTO step_instance
                 Engine->>StepInst: completeStep(stepId, eventLogId, source)
                 StepInst->>DB: UPDATE step_instance SET state=COMPLETED
+
+                Note over Engine,DB: Progressive Step Instantiation
+                Engine->>Parser: findDependentActions(allActions, actionId)
+                Parser-->>Engine: dependent actions
+                loop For each dependent action
+                    Engine->>Parser: computeRelatedActionOffset(action, actionId)
+                    Engine->>StepInst: createStep(protocol, depActionId, dueDate)
+                    StepInst->>DB: INSERT INTO step_instance (state=PENDING)
+                end
+
+                Note over Engine,ExprEval: Evaluate Intelligence Rules
+                loop For each sub-action (intelligence rules)
+                    Engine->>Parser: isIntelligenceRule(subAction)
+                    alt Is Intelligence Rule
+                        Engine->>ExprEval: evaluate(language, expression, vars)
+                        ExprEval-->>Engine: boolean
+                    end
+                end
 
                 Engine->>EventLog: updateMatchResult(MATCHED)
                 Engine->>Audit: auditSystem("event.processing", "matched", ...)
