@@ -22,7 +22,8 @@ public interface TriggerIndexRepository extends JpaRepository<TriggerIndex, Trig
      * Tier 1 structural match — find candidates by resource type and code.
      */
     @Query("SELECT ti FROM TriggerIndex ti WHERE ti.resourceType = :resourceType " +
-            "AND (ti.codeSystem IS NULL OR (ti.codeSystem = :codeSystem AND ti.codeValue = :codeValue))")
+            "AND ((ti.codeSystem = '' AND ti.codeValue = '') " +
+            "OR (ti.codeSystem = :codeSystem AND ti.codeValue = :codeValue))")
     List<TriggerIndex> findByResourceTypeAndCode(
             @Param("resourceType") String resourceType,
             @Param("codeSystem") String codeSystem,

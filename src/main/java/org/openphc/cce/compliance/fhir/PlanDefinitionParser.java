@@ -165,6 +165,81 @@ public class PlanDefinitionParser {
     }
 
     /**
+     * Extracts the condition expression from a trigger definition's condition.
+     * <p>
+     * In FHIR R4, {@code TriggerDefinition.condition} is a single {@code Expression}
+     * (unlike action-level conditions which are a list). This is where eBUZIMA-style
+     * protocols place their JSONLogic filtering expressions.
+     *
+     * @param trigger the trigger definition
+     * @return the condition expression, or null if none
+     */
+    public String extractTriggerConditionExpression(TriggerDefinition trigger) {
+        if (trigger.hasCondition() && trigger.getCondition().hasExpression()) {
+            return trigger.getCondition().getExpression();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the condition language from a trigger definition's condition.
+     *
+     * @param trigger the trigger definition
+     * @return the condition language (e.g., "text/jsonlogic"), or null
+     */
+    public String extractTriggerConditionLanguage(TriggerDefinition trigger) {
+        if (trigger.hasCondition() && trigger.getCondition().hasLanguage()) {
+            return trigger.getCondition().getLanguage();
+        }
+        return null;
+    }
+
+    /**
+     * Finds the trigger definition within an action that matches the given structural
+     * criteria (resource type and optional code). Used during Tier 2 evaluation to
+     * locate the specific trigger whose condition should be evaluated.
+     *
+     * @param action       the PlanDefinition action
+     * @param resourceType the resource type to match
+     * @param codeSystem   the code system (may be null/empty)
+     * @param codeValue    the code value (may be null/empty)
+     * @return the matching trigger definition, or null if not found
+     */
+    public TriggerDefinition findMatchingTrigger(PlanDefinition.PlanDefinitionActionComponent action,
+                                                  String resourceType,
+                                                  String codeSystem,
+                                                  String codeValue) {
+        if (!action.hasTrigger()) return null;
+
+        for (TriggerDefinition trigger : action.getTrigger()) {
+            String triggerResourceType = extractResourceType(trigger);
+            if (!Objects.equals(resourceType, triggerResourceType)) continue;
+
+            // If no code filter on the trigger index entry, match by resource type alone
+            if (codeSystem == null || codeSystem.isEmpty()) {
+                List<CodeFilter> filters = extractCodeFilters(trigger);
+                if (filters.isEmpty()) {
+                    return trigger;
+                }
+                continue;
+            }
+
+            // Match against code filters
+            List<CodeFilter> filters = extractCodeFilters(trigger);
+            if (filters.isEmpty()) {
+                // Trigger has no code filter — matches any code
+                return trigger;
+            }
+            for (CodeFilter cf : filters) {
+                if (Objects.equals(cf.system(), codeSystem) && Objects.equals(cf.code(), codeValue)) {
+                    return trigger;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Extracts timing information from an action.
      *
      * @param action the PlanDefinition action

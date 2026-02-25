@@ -69,6 +69,9 @@ public class TriggerMatchingService {
     /**
      * Tier 2: Evaluates the condition expression from a PlanDefinition action
      * against the event data and context variables.
+     * <p>
+     * Checks action-level conditions only. For trigger-level condition evaluation,
+     * use {@link #evaluateCondition(PlanDefinition.PlanDefinitionActionComponent, TriggerIndex, Map)}.
      *
      * @param action    the PlanDefinition action component
      * @param variables the variable bindings for expression evaluation
@@ -88,6 +91,53 @@ public class TriggerMatchingService {
         log.debug("Tier 2 condition evaluation: actionId={}, language={}, result={}",
                 action.getId(), language, result);
         return result;
+    }
+
+    /**
+     * Tier 2: Evaluates condition expressions at both trigger and action levels.
+     * <p>
+     * First finds the specific trigger within the action that produced the structural
+     * match (using the TriggerIndex's resource type and code). If that trigger has a
+     * condition (e.g., JSONLogic on {@code trigger[].condition}), it is evaluated first.
+     * If the trigger-level condition passes (or does not exist), the action-level
+     * condition is evaluated as a second gate.
+     * <p>
+     * This supports eBUZIMA-style protocols where conditions are placed on
+     * {@code trigger[].condition} rather than {@code action.condition[]}.
+     *
+     * @param action       the PlanDefinition action component
+     * @param triggerMatch the TriggerIndex entry from Tier 1 structural matching
+     * @param variables    the variable bindings for expression evaluation
+     * @return true if all applicable conditions evaluate to true
+     */
+    public boolean evaluateCondition(PlanDefinition.PlanDefinitionActionComponent action,
+                                      TriggerIndex triggerMatch,
+                                      Map<String, Object> variables) {
+        // Step 1: Find the matching trigger within the action
+        org.hl7.fhir.r4.model.TriggerDefinition matchedTrigger =
+                planDefinitionParser.findMatchingTrigger(
+                        action,
+                        triggerMatch.getResourceType(),
+                        triggerMatch.getCodeSystem(),
+                        triggerMatch.getCodeValue());
+
+        // Step 2: Evaluate trigger-level condition if present
+        if (matchedTrigger != null) {
+            String triggerExpression = planDefinitionParser.extractTriggerConditionExpression(matchedTrigger);
+            if (triggerExpression != null && !triggerExpression.isBlank()) {
+                String triggerLanguage = planDefinitionParser.extractTriggerConditionLanguage(matchedTrigger);
+                boolean triggerResult = expressionEvaluationService.evaluate(
+                        triggerLanguage, triggerExpression, variables);
+                log.debug("Tier 2 trigger-level condition: actionId={}, language={}, result={}",
+                        action.getId(), triggerLanguage, triggerResult);
+                if (!triggerResult) {
+                    return false;
+                }
+            }
+        }
+
+        // Step 3: Evaluate action-level condition as second gate
+        return evaluateCondition(action, variables);
     }
 
     /**
