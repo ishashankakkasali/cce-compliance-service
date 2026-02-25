@@ -29,4 +29,6 @@ public interface ProtocolInstanceRepository extends JpaRepository<ProtocolInstan
             @Param("planDefinitionId") UUID planDefinitionId);
 
     long countByStatus(ProtocolInstanceStatus status);
+
+    long countByPlanDefinitionId(UUID planDefinitionId);
 }

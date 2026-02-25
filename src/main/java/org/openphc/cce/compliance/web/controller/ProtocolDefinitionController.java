@@ -106,4 +106,14 @@ public class ProtocolDefinitionController {
         protocolDefinitionService.rebuildTriggerIndex(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * DELETE /v1/protocol-definitions/{id} — Delete a PlanDefinition.
+     * Returns 409 Conflict if protocol instances still reference it.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        protocolDefinitionService.deletePlanDefinition(id);
+        return ResponseEntity.noContent().build();
+    }
 }
