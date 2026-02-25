@@ -19,12 +19,14 @@ import static org.mockito.Mockito.*;
 class ExpressionEvaluationServiceTest {
 
     @Mock private CqlEvaluationEngine cqlEvaluationEngine;
+    @Mock private ca.uhn.fhir.fhirpath.IFhirPath fhirPath;
+    @Mock private ca.uhn.fhir.parser.IParser fhirJsonParser;
 
     private ExpressionEvaluationService service;
 
     @BeforeEach
     void setUp() {
-        service = new ExpressionEvaluationService(new ObjectMapper(), cqlEvaluationEngine);
+        service = new ExpressionEvaluationService(new ObjectMapper(), cqlEvaluationEngine, fhirPath, fhirJsonParser);
     }
 
     @Nested
@@ -147,7 +149,7 @@ class ExpressionEvaluationServiceTest {
         @Test
         @DisplayName("should return true for unsupported language")
         void shouldReturnTrueForUnsupportedLanguage() {
-            boolean result = service.evaluate("text/fhirpath", "some expression", Map.of());
+            boolean result = service.evaluate("text/unknown-lang", "some expression", Map.of());
             assertThat(result).isTrue();
         }
     }

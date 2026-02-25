@@ -1,14 +1,18 @@
 package org.openphc.cce.compliance.fhir;
 
+import ca.uhn.fhir.fhirpath.IFhirPath;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
+import org.hl7.fhir.r4.model.Base;
+import org.hl7.fhir.r4.model.BooleanType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,6 +22,7 @@ import java.util.Map;
  * <ul>
  *   <li>{@code text/jsonlogic} — JSONLogic expressions (CCE Solution Design Section 4.3.2.5)</li>
  *   <li>{@code text/cql} — Clinical Quality Language (CQL) expressions</li>
+ *   <li>{@code text/fhirpath} — FHIR FHIRPath expressions</li>
  * </ul>
  * <p>
  * The variable binding contract:
@@ -35,16 +40,23 @@ public class ExpressionEvaluationService {
 
     private static final String LANGUAGE_JSONLOGIC = "text/jsonlogic";
     private static final String LANGUAGE_CQL = "text/cql";
+    private static final String LANGUAGE_FHIRPATH = "text/fhirpath";
 
     private final JsonLogic jsonLogic;
     private final ObjectMapper objectMapper;
     private final CqlEvaluationEngine cqlEvaluationEngine;
+    private final IFhirPath fhirPath;
+    private final ca.uhn.fhir.parser.IParser fhirJsonParser;
 
     public ExpressionEvaluationService(ObjectMapper objectMapper,
-                                        CqlEvaluationEngine cqlEvaluationEngine) {
+                                        CqlEvaluationEngine cqlEvaluationEngine,
+                                        IFhirPath fhirPath,
+                                        ca.uhn.fhir.parser.IParser fhirJsonParser) {
         this.jsonLogic = new JsonLogic();
         this.objectMapper = objectMapper;
         this.cqlEvaluationEngine = cqlEvaluationEngine;
+        this.fhirPath = fhirPath;
+        this.fhirJsonParser = fhirJsonParser;
     }
 
     /**
@@ -65,6 +77,7 @@ public class ExpressionEvaluationService {
         return switch (language) {
             case LANGUAGE_JSONLOGIC -> evaluateJsonLogic(expression, variables);
             case LANGUAGE_CQL -> evaluateCql(expression, variables);
+            case LANGUAGE_FHIRPATH -> evaluateFhirPath(expression, variables);
             default -> {
                 log.warn("Unsupported expression language: {}. Treating as unconditionally true.", language);
                 yield true;
@@ -114,6 +127,69 @@ public class ExpressionEvaluationService {
     private boolean evaluateCql(String expression, Map<String, Object> variables) {
         log.debug("Evaluating CQL expression: {}", expression);
         return cqlEvaluationEngine.evaluate(expression, variables);
+    }
+
+    /**
+     * Evaluates a FHIRPath expression against the event's FHIR resource.
+     * <p>
+     * Parses the event data as a FHIR resource and evaluates the FHIRPath
+     * expression against it. Returns true if the result is a non-empty collection
+     * or a single boolean true.
+     *
+     * @param expression the FHIRPath expression string
+     * @param variables  the variable bindings (expects 'event' or 'resource' key
+     *                   containing a Map representation of a FHIR resource)
+     * @return true if the expression evaluates to truthy
+     */
+    @SuppressWarnings("unchecked")
+    private boolean evaluateFhirPath(String expression, Map<String, Object> variables) {
+        try {
+            // Get the FHIR resource data from variables
+            Object resourceData = variables.get("resource");
+            if (resourceData == null) {
+                resourceData = variables.get("event");
+            }
+            if (resourceData == null) {
+                log.warn("No FHIR resource data for FHIRPath evaluation, treating as false");
+                return false;
+            }
+
+            // Convert the Map to a FHIR resource by serializing to JSON and parsing
+            String resourceJson;
+            if (resourceData instanceof Map) {
+                resourceJson = objectMapper.writeValueAsString(resourceData);
+            } else if (resourceData instanceof String s) {
+                resourceJson = s;
+            } else {
+                log.warn("Unsupported resource data type for FHIRPath: {}", resourceData.getClass());
+                return false;
+            }
+
+            // Parse as a generic FHIR resource
+            org.hl7.fhir.r4.model.Resource resource =
+                    (org.hl7.fhir.r4.model.Resource) fhirJsonParser.parseResource(resourceJson);
+
+            // Evaluate the FHIRPath expression
+            List<Base> results = fhirPath.evaluate(resource, expression, Base.class);
+
+            if (results.isEmpty()) {
+                return false;
+            }
+            // If result is a single boolean, return its value
+            if (results.size() == 1 && results.get(0) instanceof BooleanType boolResult) {
+                return boolResult.booleanValue();
+            }
+            // Non-empty result set is truthy
+            boolean result = !results.isEmpty();
+            log.debug("FHIRPath evaluation: expression={}, resultCount={}, result={}",
+                    expression, results.size(), result);
+            return result;
+
+        } catch (Exception ex) {
+            log.error("FHIRPath evaluation failed for expression: {}", expression, ex);
+            throw new ExpressionEvaluationException(
+                    "FHIRPath evaluation failed: " + ex.getMessage(), ex);
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.openphc.cce.compliance.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.fhirpath.IFhirPath;
 import ca.uhn.fhir.parser.IParser;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,5 +26,10 @@ public class HapiFhirConfig {
         parser.setPrettyPrint(false);
         parser.setStripVersionsFromReferences(false);
         return parser;
+    }
+
+    @Bean
+    public IFhirPath fhirPath(FhirContext fhirContext) {
+        return fhirContext.newFhirPath();
     }
 }

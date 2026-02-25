@@ -162,10 +162,14 @@ class ComplianceEngineTest {
                     .thenReturn(Map.of("event", Map.of()));
             when(triggerMatchingService.evaluateCondition(eq(action), eq(triggerIdx), any())).thenReturn(true);
             when(protocolInstanceService.enrollOrGetActive("Patient/123", pdEntity)).thenReturn(pi);
+            when(planDefinitionParser.extractTiming(action)).thenReturn(Map.of());
+            when(planDefinitionParser.extractToleranceDays(action)).thenReturn(null);
             when(stepInstanceService.createStep(eq(pi), eq("action-1"), isNull(), isNull(), isNull()))
                     .thenReturn(step);
             when(stepInstanceService.completeStep(step.getId(), eventLog.getId(), "source-1"))
                     .thenReturn(completedStep);
+            when(planDefinitionParser.findDependentActions(any(), eq("action-1")))
+                    .thenReturn(Collections.emptyList());
 
             engine.processInboundEvent(event);
 

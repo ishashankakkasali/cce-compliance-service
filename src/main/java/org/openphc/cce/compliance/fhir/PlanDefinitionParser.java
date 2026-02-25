@@ -2,6 +2,7 @@ package org.openphc.cce.compliance.fhir;
 
 import ca.uhn.fhir.parser.IParser;
 import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -280,6 +281,174 @@ public class PlanDefinitionParser {
         }
 
         return timing;
+    }
+
+    // ==================== CCE Extension Extraction ====================
+
+    private static final String EXT_TOLERANCE_DAYS = "http://openphc.org/fhir/StructureDefinition/cce-tolerance-days";
+    private static final String EXT_INTELLIGENCE_SEVERITY = "http://openphc.org/fhir/StructureDefinition/cce-intelligence-severity";
+    private static final String EXT_INTELLIGENCE_TARGET = "http://openphc.org/fhir/StructureDefinition/cce-intelligence-target";
+
+    /**
+     * Extracts the CCE tolerance-days extension value from an action.
+     * Tolerance days define how many days after the due date before a step becomes overdue.
+     *
+     * @param action the PlanDefinition action
+     * @return the tolerance days, or null if not specified
+     */
+    public Integer extractToleranceDays(PlanDefinition.PlanDefinitionActionComponent action) {
+        Extension ext = action.getExtensionByUrl(EXT_TOLERANCE_DAYS);
+        if (ext != null && ext.hasValue() && ext.getValue() instanceof org.hl7.fhir.r4.model.IntegerType intVal) {
+            return intVal.getValue();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the CCE intelligence-severity extension value from an action.
+     * Defines the severity level of intelligence rule alerts (e.g., "warning", "error", "info").
+     *
+     * @param action the PlanDefinition action
+     * @return the severity string, or null if not specified
+     */
+    public String extractIntelligenceSeverity(PlanDefinition.PlanDefinitionActionComponent action) {
+        Extension ext = action.getExtensionByUrl(EXT_INTELLIGENCE_SEVERITY);
+        if (ext != null && ext.hasValue() && ext.getValue() instanceof org.hl7.fhir.r4.model.CodeType codeVal) {
+            return codeVal.getCode();
+        }
+        if (ext != null && ext.hasValue() && ext.getValue() instanceof org.hl7.fhir.r4.model.StringType strVal) {
+            return strVal.getValue();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the CCE intelligence-target extension value from an action.
+     * Defines the target audience for the intelligence output (e.g., "provider", "patient", "supervisor").
+     *
+     * @param action the PlanDefinition action
+     * @return the target string, or null if not specified
+     */
+    public String extractIntelligenceTarget(PlanDefinition.PlanDefinitionActionComponent action) {
+        Extension ext = action.getExtensionByUrl(EXT_INTELLIGENCE_TARGET);
+        if (ext != null && ext.hasValue() && ext.getValue() instanceof org.hl7.fhir.r4.model.CodeType codeVal) {
+            return codeVal.getCode();
+        }
+        if (ext != null && ext.hasValue() && ext.getValue() instanceof org.hl7.fhir.r4.model.StringType strVal) {
+            return strVal.getValue();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the requiredBehavior from an action.
+     * Determines if the step is must/should/could (optional).
+     *
+     * @param action the PlanDefinition action
+     * @return the requiredBehavior code (e.g., "must", "could", "must-unless-documented"), or null
+     */
+    public String extractRequiredBehavior(PlanDefinition.PlanDefinitionActionComponent action) {
+        if (action.hasRequiredBehavior()) {
+            return action.getRequiredBehavior().toCode();
+        }
+        return null;
+    }
+
+    /**
+     * Extracts the definitionCanonical from an action.
+     * References an ActivityDefinition or child PlanDefinition.
+     *
+     * @param action the PlanDefinition action
+     * @return the canonical reference, or null
+     */
+    public String extractDefinitionCanonical(PlanDefinition.PlanDefinitionActionComponent action) {
+        if (action.hasDefinitionCanonicalType()) {
+            return action.getDefinitionCanonicalType().getValue();
+        }
+        return null;
+    }
+
+    /**
+     * Determines if an action is an intelligence rule.
+     * Intelligence rules are nested sub-actions that have conditions but no triggers,
+     * and typically include a definitionCanonical or CCE intelligence extensions.
+     *
+     * @param action the PlanDefinition action
+     * @return true if the action appears to be an intelligence rule
+     */
+    public boolean isIntelligenceRule(PlanDefinition.PlanDefinitionActionComponent action) {
+        boolean hasCondition = action.hasCondition();
+        boolean hasTrigger = action.hasTrigger();
+        boolean hasIntelligenceExt = action.hasExtension(EXT_INTELLIGENCE_SEVERITY)
+                || action.hasExtension(EXT_INTELLIGENCE_TARGET);
+        // Intelligence rules: have condition + no trigger, or have intelligence extensions
+        return (hasCondition && !hasTrigger) || hasIntelligenceExt;
+    }
+
+    /**
+     * Finds all actions that depend on the given action ID via relatedAction.
+     * These are downstream actions (e.g., relationship = "after-end" or "after").
+     *
+     * @param allActions all flattened actions from the PlanDefinition
+     * @param actionId   the action ID to find dependents for
+     * @return list of dependent actions
+     */
+    public List<PlanDefinition.PlanDefinitionActionComponent> findDependentActions(
+            List<PlanDefinition.PlanDefinitionActionComponent> allActions, String actionId) {
+        List<PlanDefinition.PlanDefinitionActionComponent> dependents = new ArrayList<>();
+        for (PlanDefinition.PlanDefinitionActionComponent action : allActions) {
+            if (action.hasRelatedAction()) {
+                for (var related : action.getRelatedAction()) {
+                    if (actionId.equals(related.getActionId())) {
+                        dependents.add(action);
+                        break;
+                    }
+                }
+            }
+        }
+        return dependents;
+    }
+
+    /**
+     * Computes the due date offset from relatedAction.offsetDuration.
+     * Returns the offset as a Java Duration, or null if no offset is defined.
+     *
+     * @param action the dependent action whose relatedAction has the offset
+     * @param precedingActionId the action ID of the preceding (completed) action
+     * @return the offset as java.time.Duration, or null
+     */
+    public java.time.Duration computeRelatedActionOffset(
+            PlanDefinition.PlanDefinitionActionComponent action, String precedingActionId) {
+        if (!action.hasRelatedAction()) return null;
+        for (var related : action.getRelatedAction()) {
+            if (precedingActionId.equals(related.getActionId()) && related.hasOffsetDuration()) {
+                Duration offset = related.getOffsetDuration();
+                if (offset.hasValue() && offset.hasUnit()) {
+                    return convertFhirDurationToJava(offset.getValue(), offset.getUnit());
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Converts a FHIR Duration value + unit to a Java Duration.
+     */
+    private java.time.Duration convertFhirDurationToJava(java.math.BigDecimal value, String unit) {
+        long amount = value.longValue();
+        return switch (unit.toLowerCase()) {
+            case "s", "sec", "second", "seconds" -> java.time.Duration.ofSeconds(amount);
+            case "min", "minute", "minutes" -> java.time.Duration.ofMinutes(amount);
+            case "h", "hour", "hours" -> java.time.Duration.ofHours(amount);
+            case "d", "day", "days" -> java.time.Duration.ofDays(amount);
+            case "wk", "week", "weeks" -> java.time.Duration.ofDays(amount * 7);
+            case "mo", "month", "months" -> java.time.Duration.ofDays(amount * 30);
+            case "a", "year", "years" -> java.time.Duration.ofDays(amount * 365);
+            default -> {
+                log.warn("Unknown FHIR duration unit: {}, defaulting to days", unit);
+                yield java.time.Duration.ofDays(amount);
+            }
+        };
     }
 
     /**
