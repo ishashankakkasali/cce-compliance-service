@@ -19,6 +19,7 @@ import org.openphc.cce.compliance.domain.entity.TriggerIndex;
 import org.openphc.cce.compliance.domain.enums.PlanDefinitionStatus;
 import org.openphc.cce.compliance.domain.enums.TriggerMode;
 import org.openphc.cce.compliance.domain.repository.PlanDefinitionRepository;
+import org.openphc.cce.compliance.domain.repository.ProtocolInstanceRepository;
 import org.openphc.cce.compliance.domain.repository.TriggerIndexRepository;
 import org.openphc.cce.compliance.fhir.PlanDefinitionParser;
 import org.openphc.cce.compliance.fhir.PlanDefinitionParser.CodeFilter;
@@ -36,6 +37,7 @@ class ProtocolDefinitionServiceTest {
 
     @Mock private PlanDefinitionRepository planDefinitionRepository;
     @Mock private TriggerIndexRepository triggerIndexRepository;
+    @Mock private ProtocolInstanceRepository protocolInstanceRepository;
     @Mock private PlanDefinitionParser planDefinitionParser;
     @Mock private ObjectMapper objectMapper;
     @Mock private EntityManager entityManager;
@@ -46,6 +48,7 @@ class ProtocolDefinitionServiceTest {
     void setUp() {
         service = new ProtocolDefinitionService(
                 planDefinitionRepository, triggerIndexRepository,
+                protocolInstanceRepository,
                 planDefinitionParser, objectMapper, entityManager);
     }
 
@@ -257,6 +260,60 @@ class ProtocolDefinitionServiceTest {
             when(planDefinitionRepository.findByUrl("url"))
                     .thenReturn(List.of(new PlanDefinitionEntity()));
             assertThat(service.findByUrl("url")).hasSize(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("deletePlanDefinition")
+    class DeletePlanDefinition {
+
+        @Test
+        @DisplayName("should delete PlanDefinition when no instances reference it")
+        void shouldDeleteWhenNoInstances() {
+            UUID id = UUID.randomUUID();
+            PlanDefinitionEntity entity = new PlanDefinitionEntity();
+            entity.setId(id);
+            entity.setUrl("http://example.org/pd");
+            entity.setVersion("1.0");
+            entity.setStatus(PlanDefinitionStatus.ACTIVE);
+
+            when(planDefinitionRepository.findById(id)).thenReturn(Optional.of(entity));
+            when(protocolInstanceRepository.countByPlanDefinitionId(id)).thenReturn(0L);
+
+            service.deletePlanDefinition(id);
+
+            verify(triggerIndexRepository).deleteByPlanDefinitionId(id);
+            verify(planDefinitionRepository).delete(entity);
+        }
+
+        @Test
+        @DisplayName("should throw when PlanDefinition not found")
+        void shouldThrowWhenNotFound() {
+            UUID id = UUID.randomUUID();
+            when(planDefinitionRepository.findById(id)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.deletePlanDefinition(id))
+                    .isInstanceOf(NoSuchElementException.class)
+                    .hasMessageContaining(id.toString());
+        }
+
+        @Test
+        @DisplayName("should throw when protocol instances still reference the PlanDefinition")
+        void shouldThrowWhenInstancesExist() {
+            UUID id = UUID.randomUUID();
+            PlanDefinitionEntity entity = new PlanDefinitionEntity();
+            entity.setId(id);
+
+            when(planDefinitionRepository.findById(id)).thenReturn(Optional.of(entity));
+            when(protocolInstanceRepository.countByPlanDefinitionId(id)).thenReturn(3L);
+
+            assertThatThrownBy(() -> service.deletePlanDefinition(id))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Cannot delete")
+                    .hasMessageContaining("3 protocol instance(s)");
+
+            verify(planDefinitionRepository, never()).delete(any());
+            verify(triggerIndexRepository, never()).deleteByPlanDefinitionId(any());
         }
     }
 

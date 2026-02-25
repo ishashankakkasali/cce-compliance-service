@@ -21,7 +21,7 @@ Tokens are obtained from Keycloak (`cce-production` realm).
 | Scope | Grants Access To |
 |---|---|
 | `compliance:read` | All GET endpoints under `/v1/**` |
-| `compliance:write` | All POST endpoints under `/v1/protocol-definitions/**` |
+| `compliance:write` | All POST/DELETE endpoints under `/v1/protocol-definitions/**` |
 
 ---
 
@@ -187,6 +187,35 @@ Manage FHIR R4 PlanDefinition resources.
 **Response:** `200 OK`
 
 **Use Case:** When the index parsing logic is updated, this endpoint allows re-indexing without reloading the PlanDefinition.
+
+---
+
+### 1.8 Delete Protocol Definition
+
+**`DELETE /v1/protocol-definitions/{id}`** — Permanently delete a protocol definition.
+
+**Required Scope:** `compliance:write`
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | UUID | PlanDefinition ID |
+
+**Response:** `204 No Content`
+
+**Error Responses:**
+
+| Status | Condition |
+|---|---|
+| `404 Not Found` | PlanDefinition with the given ID does not exist |
+| `409 Conflict` | Protocol instances still reference this PlanDefinition |
+
+**Side Effects:**
+- Deletes all `trigger_index` entries for this PlanDefinition
+- Removes the `plan_definition` row permanently
+
+**Note:** A PlanDefinition cannot be deleted while protocol instances reference it. Retire the definition first and ensure all protocol instances are completed or cancelled before deleting.
 
 ---
 

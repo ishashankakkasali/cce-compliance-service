@@ -252,4 +252,43 @@ class ProtocolDefinitionControllerTest {
             verify(protocolDefinitionService).rebuildTriggerIndex(id);
         }
     }
+
+    @Nested
+    @DisplayName("DELETE /v1/protocol-definitions/{id}")
+    class DeletePlanDefinition {
+
+        @Test
+        @DisplayName("should return 204 when deleted successfully")
+        void shouldReturn204WhenDeleted() throws Exception {
+            UUID id = UUID.randomUUID();
+
+            mockMvc.perform(delete("/v1/protocol-definitions/{id}", id))
+                    .andExpect(status().isNoContent());
+
+            verify(protocolDefinitionService).deletePlanDefinition(id);
+        }
+
+        @Test
+        @DisplayName("should return 404 when PlanDefinition not found")
+        void shouldReturn404WhenNotFound() throws Exception {
+            UUID id = UUID.randomUUID();
+            doThrow(new NoSuchElementException("PlanDefinition not found: " + id))
+                    .when(protocolDefinitionService).deletePlanDefinition(id);
+
+            mockMvc.perform(delete("/v1/protocol-definitions/{id}", id))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("should return 409 when protocol instances still reference it")
+        void shouldReturn409WhenInstancesExist() throws Exception {
+            UUID id = UUID.randomUUID();
+            doThrow(new IllegalStateException("Cannot delete PlanDefinition " + id + ": 3 protocol instance(s) still reference it"))
+                    .when(protocolDefinitionService).deletePlanDefinition(id);
+
+            mockMvc.perform(delete("/v1/protocol-definitions/{id}", id))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.message").value(containsString("Cannot delete")));
+        }
+    }
 }

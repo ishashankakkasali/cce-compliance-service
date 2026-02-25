@@ -8,6 +8,7 @@ import org.openphc.cce.compliance.domain.entity.TriggerIndex;
 import org.openphc.cce.compliance.domain.enums.PlanDefinitionStatus;
 import org.openphc.cce.compliance.domain.enums.TriggerMode;
 import org.openphc.cce.compliance.domain.repository.PlanDefinitionRepository;
+import org.openphc.cce.compliance.domain.repository.ProtocolInstanceRepository;
 import org.openphc.cce.compliance.domain.repository.TriggerIndexRepository;
 import org.openphc.cce.compliance.fhir.PlanDefinitionParser;
 import org.openphc.cce.compliance.fhir.PlanDefinitionParser.CodeFilter;
@@ -31,17 +32,20 @@ public class ProtocolDefinitionService {
 
     private final PlanDefinitionRepository planDefinitionRepository;
     private final TriggerIndexRepository triggerIndexRepository;
+    private final ProtocolInstanceRepository protocolInstanceRepository;
     private final PlanDefinitionParser planDefinitionParser;
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
 
     public ProtocolDefinitionService(PlanDefinitionRepository planDefinitionRepository,
                                       TriggerIndexRepository triggerIndexRepository,
+                                      ProtocolInstanceRepository protocolInstanceRepository,
                                       PlanDefinitionParser planDefinitionParser,
                                       ObjectMapper objectMapper,
                                       EntityManager entityManager) {
         this.planDefinitionRepository = planDefinitionRepository;
         this.triggerIndexRepository = triggerIndexRepository;
+        this.protocolInstanceRepository = protocolInstanceRepository;
         this.planDefinitionParser = planDefinitionParser;
         this.objectMapper = objectMapper;
         this.entityManager = entityManager;
@@ -113,6 +117,36 @@ public class ProtocolDefinitionService {
         triggerIndexRepository.deleteByPlanDefinitionId(entity.getId());
 
         log.info("Retired PlanDefinition: url={}, version={}", url, version);
+    }
+
+    /**
+     * Deletes a PlanDefinition by ID.
+     * Fails if any protocol instances reference this definition.
+     *
+     * @param id the PlanDefinition UUID
+     * @throws NoSuchElementException if the PlanDefinition does not exist
+     * @throws IllegalStateException  if protocol instances reference this definition
+     */
+    public void deletePlanDefinition(UUID id) {
+        PlanDefinitionEntity entity = planDefinitionRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "PlanDefinition not found: " + id));
+
+        long instanceCount = protocolInstanceRepository.countByPlanDefinitionId(id);
+        if (instanceCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete PlanDefinition " + id + ": " + instanceCount
+                            + " protocol instance(s) still reference it");
+        }
+
+        // Remove trigger index entries first
+        triggerIndexRepository.deleteByPlanDefinitionId(id);
+
+        // Delete the entity
+        planDefinitionRepository.delete(entity);
+
+        log.info("Deleted PlanDefinition: id={}, url={}, version={}",
+                id, entity.getUrl(), entity.getVersion());
     }
 
     /**
