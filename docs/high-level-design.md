@@ -124,14 +124,19 @@ graph TB
     J --> N["Create/Complete Step"]
     J --> O["Update Event Log"]
     J --> P["Record Audit"]
+    N --> PI["Progressive Step Instantiation<br/>(create dependent PENDING steps)"]
+    N --> IR["Evaluate Intelligence Rules<br/>(nested sub-actions with severity/target)"]
 ```
 
 **Responsibilities:**
 - Consume CloudEvents from `cce.events.inbound`
 - Perform idempotency check via `(cloudeventsId, source)`
-- Execute two-tier trigger matching (Tier 1 structural + Tier 2 expression evaluation via JSONLogic or CQL)
+- Support **explicit matching** (bypass structural match when CloudEvent carries `actionId`)
+- Execute two-tier trigger matching (Tier 1 structural + Tier 2 expression evaluation via JSONLogic, CQL, or FHIRPath)
 - Enroll patients in protocols automatically on first match
-- Create and complete step instances
+- Create and complete step instances with **due-date calculation** from timing/relatedAction offsets and tolerance-days
+- **Progressive step instantiation** — create downstream PENDING steps when a step is completed
+- **Intelligence rule evaluation** — evaluate nested sub-actions with severity and target extensions
 - Detect and record deviations
 
 ### 3.3 Scheduler Integration Subsystem

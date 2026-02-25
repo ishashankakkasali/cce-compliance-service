@@ -180,4 +180,107 @@ class TriggerMatchingServiceTest {
             assertThat(service.findByPlanDefinitionId(pdId)).hasSize(1);
         }
     }
+
+    @Nested
+    @DisplayName("evaluateCondition with TriggerIndex (trigger-level)")
+    class EvaluateConditionWithTriggerIndex {
+
+        @Test
+        @DisplayName("should evaluate trigger-level condition when present")
+        void shouldEvaluateTriggerLevelCondition() {
+            // Set up action with trigger that has a condition
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            action.setId("enrollment");
+
+            TriggerIndex triggerMatch = createTriggerIndex("Encounter", "http://openphc.org/encounter-types", "VISIT_ENCOUNTER");
+
+            org.hl7.fhir.r4.model.TriggerDefinition matchedTrigger = new org.hl7.fhir.r4.model.TriggerDefinition();
+
+            when(planDefinitionParser.findMatchingTrigger(action, "Encounter",
+                    "http://openphc.org/encounter-types", "VISIT_ENCOUNTER"))
+                    .thenReturn(matchedTrigger);
+            when(planDefinitionParser.extractTriggerConditionExpression(matchedTrigger))
+                    .thenReturn("{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}");
+            when(planDefinitionParser.extractTriggerConditionLanguage(matchedTrigger))
+                    .thenReturn("text/jsonlogic");
+            when(expressionEvaluationService.evaluate("text/jsonlogic",
+                    "{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}", Map.of("resource", Map.of("status", "in-progress"))))
+                    .thenReturn(true);
+            // Action-level condition (none)
+            when(planDefinitionParser.extractConditionExpression(action)).thenReturn(null);
+
+            boolean result = service.evaluateCondition(action, triggerMatch,
+                    Map.of("resource", Map.of("status", "in-progress")));
+
+            assertThat(result).isTrue();
+            verify(expressionEvaluationService).evaluate("text/jsonlogic",
+                    "{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}",
+                    Map.of("resource", Map.of("status", "in-progress")));
+        }
+
+        @Test
+        @DisplayName("should reject when trigger-level condition evaluates to false")
+        void shouldRejectWhenTriggerConditionFalse() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            action.setId("enrollment");
+
+            TriggerIndex triggerMatch = createTriggerIndex("Encounter", "http://openphc.org/encounter-types", "VISIT_ENCOUNTER");
+
+            org.hl7.fhir.r4.model.TriggerDefinition matchedTrigger = new org.hl7.fhir.r4.model.TriggerDefinition();
+
+            when(planDefinitionParser.findMatchingTrigger(action, "Encounter",
+                    "http://openphc.org/encounter-types", "VISIT_ENCOUNTER"))
+                    .thenReturn(matchedTrigger);
+            when(planDefinitionParser.extractTriggerConditionExpression(matchedTrigger))
+                    .thenReturn("{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}");
+            when(planDefinitionParser.extractTriggerConditionLanguage(matchedTrigger))
+                    .thenReturn("text/jsonlogic");
+            when(expressionEvaluationService.evaluate(any(), any(), any())).thenReturn(false);
+
+            boolean result = service.evaluateCondition(action, triggerMatch, Map.of("resource", Map.of("status", "finished")));
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("should fall through to action-level condition when no trigger condition")
+        void shouldFallThroughToActionLevel() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            action.setId("action-1");
+
+            TriggerIndex triggerMatch = createTriggerIndex("Encounter", "", "");
+
+            org.hl7.fhir.r4.model.TriggerDefinition matchedTrigger = new org.hl7.fhir.r4.model.TriggerDefinition();
+
+            when(planDefinitionParser.findMatchingTrigger(action, "Encounter", "", ""))
+                    .thenReturn(matchedTrigger);
+            when(planDefinitionParser.extractTriggerConditionExpression(matchedTrigger)).thenReturn(null);
+            // Falls through to action-level
+            when(planDefinitionParser.extractConditionExpression(action)).thenReturn("{\"==\":[1,1]}");
+            when(planDefinitionParser.extractConditionLanguage(action)).thenReturn("text/jsonlogic");
+            when(expressionEvaluationService.evaluate("text/jsonlogic", "{\"==\":[1,1]}", Map.of())).thenReturn(true);
+
+            boolean result = service.evaluateCondition(action, triggerMatch, Map.of());
+
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("should auto-pass when no trigger or action conditions exist")
+        void shouldAutoPassWhenNoConditions() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            action.setId("action-1");
+
+            TriggerIndex triggerMatch = createTriggerIndex("Observation", "", "");
+
+            when(planDefinitionParser.findMatchingTrigger(action, "Observation", "", ""))
+                    .thenReturn(null);
+            when(planDefinitionParser.extractConditionExpression(action)).thenReturn(null);
+
+            boolean result = service.evaluateCondition(action, triggerMatch, Map.of());
+
+            assertThat(result).isTrue();
+            verify(expressionEvaluationService, never()).evaluate(any(), any(), any());
+        }
+    }
 }

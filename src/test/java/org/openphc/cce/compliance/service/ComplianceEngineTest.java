@@ -160,12 +160,16 @@ class ComplianceEngineTest {
             when(planDefinitionParser.extractAllActions(pd)).thenReturn(List.of(action));
             when(expressionEvaluationService.buildVariables(any(), any(), any(), any()))
                     .thenReturn(Map.of("event", Map.of()));
-            when(triggerMatchingService.evaluateCondition(eq(action), any())).thenReturn(true);
+            when(triggerMatchingService.evaluateCondition(eq(action), eq(triggerIdx), any())).thenReturn(true);
             when(protocolInstanceService.enrollOrGetActive("Patient/123", pdEntity)).thenReturn(pi);
+            when(planDefinitionParser.extractTiming(action)).thenReturn(Map.of());
+            when(planDefinitionParser.extractToleranceDays(action)).thenReturn(null);
             when(stepInstanceService.createStep(eq(pi), eq("action-1"), isNull(), isNull(), isNull()))
                     .thenReturn(step);
             when(stepInstanceService.completeStep(step.getId(), eventLog.getId(), "source-1"))
                     .thenReturn(completedStep);
+            when(planDefinitionParser.findDependentActions(any(), eq("action-1")))
+                    .thenReturn(Collections.emptyList());
 
             engine.processInboundEvent(event);
 
@@ -265,6 +269,7 @@ class ComplianceEngineTest {
 
             when(eventLogService.isDuplicate(anyString(), anyString())).thenReturn(false);
             when(eventLogService.recordEvent(any(), any())).thenReturn(eventLog);
+            // New: bulk fetch by resource type, then in-memory filter
             when(triggerMatchingService.findStructuralMatches("Encounter", null, null))
                     .thenReturn(Collections.emptyList());
 
@@ -298,12 +303,13 @@ class ComplianceEngineTest {
 
             when(eventLogService.isDuplicate(anyString(), anyString())).thenReturn(false);
             when(eventLogService.recordEvent(any(), any())).thenReturn(eventLog);
-            when(triggerMatchingService.findStructuralMatches("Observation", "http://loinc.org", "12345-6"))
+            // New: bulk fetch by resource type, then in-memory filtering
+            when(triggerMatchingService.findStructuralMatches("Observation", null, null))
                     .thenReturn(Collections.emptyList());
 
             engine.processInboundEvent(event);
 
-            verify(triggerMatchingService).findStructuralMatches("Observation", "http://loinc.org", "12345-6");
+            verify(triggerMatchingService).findStructuralMatches("Observation", null, null);
         }
     }
 }

@@ -214,6 +214,104 @@ class PlanDefinitionParserTest {
     }
 
     @Nested
+    @DisplayName("extractTriggerConditionExpression / extractTriggerConditionLanguage")
+    class ExtractTriggerCondition {
+
+        @Test
+        @DisplayName("should extract trigger-level condition expression and language")
+        void shouldExtractTriggerCondition() {
+            TriggerDefinition trigger = new TriggerDefinition();
+            Expression expr = new Expression();
+            expr.setLanguage("text/jsonlogic");
+            expr.setExpression("{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}");
+            trigger.setCondition(expr);
+
+            assertThat(parser.extractTriggerConditionExpression(trigger))
+                    .isEqualTo("{\"!=\":[{\"var\":\"resource.status\"},\"finished\"]}");
+            assertThat(parser.extractTriggerConditionLanguage(trigger))
+                    .isEqualTo("text/jsonlogic");
+        }
+
+        @Test
+        @DisplayName("should return null when trigger has no condition")
+        void shouldReturnNullWhenNoTriggerCondition() {
+            TriggerDefinition trigger = new TriggerDefinition();
+
+            assertThat(parser.extractTriggerConditionExpression(trigger)).isNull();
+            assertThat(parser.extractTriggerConditionLanguage(trigger)).isNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("findMatchingTrigger")
+    class FindMatchingTrigger {
+
+        @Test
+        @DisplayName("should find trigger matching resource type and code")
+        void shouldFindMatchingTriggerByCode() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            action.setId("enrollment");
+
+            TriggerDefinition trigger = new TriggerDefinition();
+            trigger.setType(TriggerDefinition.TriggerType.DATAADDED);
+            DataRequirement dr = new DataRequirement();
+            dr.setType("Encounter");
+            DataRequirement.DataRequirementCodeFilterComponent cf = dr.addCodeFilter();
+            cf.addCode().setSystem("http://openphc.org/encounter-types").setCode("VISIT_ENCOUNTER");
+            trigger.addData(dr);
+
+            action.addTrigger(trigger);
+
+            TriggerDefinition result = parser.findMatchingTrigger(action, "Encounter",
+                    "http://openphc.org/encounter-types", "VISIT_ENCOUNTER");
+
+            assertThat(result).isNotNull();
+            assertThat(result).isSameAs(trigger);
+        }
+
+        @Test
+        @DisplayName("should find trigger matching resource type only (no code filter)")
+        void shouldFindMatchingTriggerByResourceTypeOnly() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            TriggerDefinition trigger = new TriggerDefinition();
+            DataRequirement dr = new DataRequirement();
+            dr.setType("MedicationDispense");
+            trigger.addData(dr);
+            action.addTrigger(trigger);
+
+            TriggerDefinition result = parser.findMatchingTrigger(action, "MedicationDispense", null, null);
+
+            assertThat(result).isNotNull();
+            assertThat(result).isSameAs(trigger);
+        }
+
+        @Test
+        @DisplayName("should return null when no trigger matches")
+        void shouldReturnNullWhenNoMatch() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+            TriggerDefinition trigger = new TriggerDefinition();
+            DataRequirement dr = new DataRequirement();
+            dr.setType("Encounter");
+            trigger.addData(dr);
+            action.addTrigger(trigger);
+
+            TriggerDefinition result = parser.findMatchingTrigger(action, "Observation", null, null);
+
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("should return null when action has no triggers")
+        void shouldReturnNullWhenNoTriggers() {
+            PlanDefinition.PlanDefinitionActionComponent action = new PlanDefinition.PlanDefinitionActionComponent();
+
+            TriggerDefinition result = parser.findMatchingTrigger(action, "Encounter", null, null);
+
+            assertThat(result).isNull();
+        }
+    }
+
+    @Nested
     @DisplayName("extractTiming")
     class ExtractTiming {
 

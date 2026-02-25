@@ -44,7 +44,7 @@ org.openphc.cce.compliance
 │   ├── CqlEvaluationEngine.java                # CQL condition evaluator (CQF Engine)
 │   ├── ExpressionEvaluationService.java       # Multi-language condition evaluator
 │   ├── FhirResourceValidator.java             # HAPI FHIR validation
-│   ├── HapiFhirConfig.java                    # FhirContext & IParser beans
+│   ├── HapiFhirConfig.java                    # FhirContext, IParser & IFhirPath beans
 │   └── PlanDefinitionParser.java              # FHIR PlanDefinition extraction
 │
 ├── kafka/
@@ -194,9 +194,12 @@ classDiagram
     class ComplianceEngine {
         +processInboundEvent(CloudEventMessage)
         -processMatch(...)
+        -processExplicitMatch(event, eventLog) boolean
+        -progressiveStepInstantiation(match, protocol)
+        -evaluateIntelligenceRules(match, event, protocol)
+        -convertTimingOffset(value, unit) Duration
         -extractResourceType(data) String
-        -extractCodeSystem(data) String
-        -extractCodeValue(data) String
+        -extractAllCodes(event) List~CodePair~
     }
 
     class ProtocolDefinitionService {
@@ -263,13 +266,18 @@ classDiagram
 
 ## 3. ComplianceEngine — Core Pipeline
 
-The `ComplianceEngine` is the central orchestrator (341 lines). It processes every inbound clinical event through a 6-step pipeline:
+The `ComplianceEngine` is the central orchestrator (648 lines). It processes every inbound clinical event through a multi-step pipeline:
 
 ### 3.1 Pipeline Steps
 
 ```mermaid
 flowchart TD
-    START["CloudEventMessage received"] --> S1
+    START["CloudEventMessage received"] --> EXPL
+
+    EXPL{"Explicit Match?<br/>(actionId on CloudEvent)"}
+    EXPL -->|"Yes"| EXPLM["processExplicitMatch()<br/>Bypass structural match"]
+    EXPL -->|"No"| S1
+    EXPLM --> DONE["Return"]
 
     S1["Step 1: Idempotency Check"]
     S1 -->|"Duplicate"| DUP["Return early<br/>Increment cce.events.duplicate"]
@@ -278,14 +286,14 @@ flowchart TD
     S2["Step 2: Record Event Log<br/>(status=ZERO_MATCH)"]
     S2 --> S3
 
-    S3["Step 3: Extract Resource Info<br/>- resourceType<br/>- codeSystem<br/>- codeValue"]
+    S3["Step 3: Extract Resource Info<br/>- resourceType<br/>- allCodes (code, type, category, status)"]
     S3 --> S4
 
     S4["Step 4: Tier 1 Structural Match<br/>(trigger_index lookup)"]
     S4 --> S5
 
     S5["Step 5: Tier 2 Condition Evaluation<br/>(for each structural match)"]
-    S5 -->|"Parse PlanDefinition<br/>Evaluate JSONLogic"| S6
+    S5 -->|"Parse PlanDefinition<br/>Evaluate JSONLogic / CQL / FHIRPath"| S6
 
     S6{"Step 6: Result Classification"}
     S6 -->|"Exactly 1 match"| MATCH["processMatch()"]
@@ -293,9 +301,11 @@ flowchart TD
     S6 -->|"0 matches"| ZERO["Log ZERO_MATCH"]
 
     MATCH --> M1["Enroll patient<br/>(enrollOrGetActive)"]
-    M1 --> M2["Create/Complete step"]
+    M1 --> M2["Create/Complete step<br/>(compute dueDate + overdueDate)"]
     M2 --> M3["Update event log<br/>(status=MATCHED)"]
     M3 --> M4["Write audit log"]
+    M2 --> M5["Progressive Step Instantiation<br/>(create dependent PENDING steps)"]
+    M2 --> M6["Evaluate Intelligence Rules<br/>(nested sub-actions with severity/target)"]
 
     AMBIG --> A1["Update event log<br/>(status=AMBIGUOUS)"]
     A1 --> A2["Record deviation<br/>per match"]
@@ -305,13 +315,14 @@ flowchart TD
 
 ### 3.2 Resource Extraction Logic
 
-The engine extracts FHIR resource metadata from CloudEvent data:
+The engine extracts FHIR resource metadata from CloudEvent data using **multi-code extraction**:
 
-| Field | Extraction Path | Fallback |
+| Field | Extraction Paths | Fallback |
 |---|---|---|
 | `resourceType` | `data.resourceType` | Parse from `event.type` (e.g., `cce.observation.created` → `Observation`) |
-| `codeSystem` | `data.code.coding[0].system` | `null` |
-| `codeValue` | `data.code.coding[0].code` | `null` |
+| `allCodes` | `data.code.coding[*]`, `data.type.coding[*]`, `data.category[*].coding[*]`, `data.clinicalStatus.coding[*]`, `data.status` | Empty list |
+
+All codes from `code`, `type`, `category`, and `clinicalStatus` CodeableConcept fields are extracted and matched against the trigger index. This provides broader matching than single-code extraction.
 
 ### 3.3 Match Result Inner Record
 
@@ -380,6 +391,7 @@ WHERE resource_type = :resourceType
 **Supported Languages:**
 - `text/jsonlogic` — evaluated via `io.github.jamsesso.jsonlogic.JsonLogic`
 - `text/cql` — evaluated via CQF CQL Engine (`info.cqframework:engine:3.26.0`)
+- `text/fhirpath` — evaluated via HAPI FHIR `IFhirPath` engine (R4)
 - Any other language — treated as **unconditionally true** (pass-through)
 
 ### 4.3 Index Building (ProtocolDefinitionService)
@@ -462,7 +474,7 @@ flowchart LR
 
 ## 8. FHIR PlanDefinition Parser
 
-The `PlanDefinitionParser` (280 lines) extracts structured data from FHIR R4 PlanDefinition resources:
+The `PlanDefinitionParser` (459 lines) extracts structured data from FHIR R4 PlanDefinition resources:
 
 ### 8.0 CQL Evaluation Engine
 
@@ -494,7 +506,18 @@ Observation.value >= 1000
 | `extractCodeFilters(trigger)` | Trigger definition | `List<CodeFilter>` with system + code |
 | `extractConditionExpression(action)` | Action | Expression string (e.g., JSONLogic) |
 | `extractConditionLanguage(action)` | Action | Language string (e.g., `"text/jsonlogic"`) |
+| `extractTriggerConditionExpression(trigger)` | Trigger | Trigger-level condition expression |
+| `extractTriggerConditionLanguage(trigger)` | Trigger | Trigger-level condition language |
+| `findMatchingTrigger(action, resourceType, codeSystem, codeValue)` | Action + event metadata | Matching `TriggerDefinition` or `null` |
 | `extractTiming(action)` | Action | `Map` with duration, frequency, period, offset |
+| `extractToleranceDays(action)` | Action | `Integer` tolerance days from CCE extension (nullable) |
+| `extractIntelligenceSeverity(action)` | Action | Severity string from CCE extension (e.g., `"warning"`) |
+| `extractIntelligenceTarget(action)` | Action | Target string from CCE extension (e.g., `"provider"`) |
+| `extractRequiredBehavior(action)` | Action | Required behavior string (e.g., `"must"`, `"could"`) |
+| `extractDefinitionCanonical(action)` | Action | Canonical URL from `definitionCanonical` |
+| `isIntelligenceRule(action)` | Action | `boolean` — true if action has intelligence severity extension |
+| `findDependentActions(allActions, actionId)` | All actions + parent action ID | `List<Action>` that depend on the given action via `relatedAction` |
+| `computeRelatedActionOffset(action, dependsOnActionId)` | Action + dependency ID | `Duration` offset from the relatedAction |
 
 ### 8.2 Action Hierarchy Flattening
 
