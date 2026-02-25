@@ -6,14 +6,12 @@
     "_protocol": "PlanDefinition/ebuzima-clinical-visit|1.0",
     "_description": "Full operational workflow following the RHIE Resource Hierarchy: Visit Registration → Vital Signs → Consultation → Chief Complaint → Lab Order → Diagnosis → Prescription → Lab Result → Dispensing → Visit Closure. Demonstrates the eBUZIMA Pattern 4 (Complete Clinical Visit) as CloudEvents flowing through openHIM to CCE."
   },
-
   {
     "_comment": "EVENT 1: Visit Registration — VISIT_ENCOUNTER created in eBUZIMA when patient arrives at the health center. Status is 'in-progress' (not 'finished'). This enrolls the patient into the operational workflow protocol.",
     "_step": "enrollment (VISIT_ENCOUNTER)",
     "_hierarchy": "ROOT — all subsequent resources reference this visit",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0001-4000-8000-000000000001",
     "source": "rhie-mediator",
@@ -23,7 +21,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-visit-20260225-0001",
-
+    "correlationid": "corr-1343872c-636d-506f-b041-1e571d426932",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-visit-kicukiro-001",
@@ -81,14 +79,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 2: Vital Signs — Blood Pressure recorded at Nursing Station. Observation with category 'vital-signs'. References the Visit Encounter.",
     "_step": "vital-signs-recording",
     "_hierarchy": "CHILD of Visit Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0002-4000-8000-000000000002",
     "source": "rhie-mediator",
@@ -98,7 +94,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "obs-vitals-bp-20260225-0001",
-
+    "correlationid": "corr-08f6f7d2-f5c6-591e-8cd1-61dfeb753d82",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-bp-kicukiro-001",
@@ -175,14 +171,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 3: Vital Signs — Temperature also recorded at Nursing Station. Another vital-signs Observation. (Note: the protocol step 'vital-signs-recording' already completed on EVENT 2; this event won't match an open step but demonstrates multiple vitals per visit.)",
     "_step": "(already completed — additional vital sign for same visit)",
     "_hierarchy": "CHILD of Visit Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0003-4000-8000-000000000003",
     "source": "rhie-mediator",
@@ -192,7 +186,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "obs-vitals-temp-20260225-0001",
-
+    "correlationid": "corr-76a59854-769c-534f-bad6-cb020cc0b291",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-temp-kicukiro-001",
@@ -233,14 +227,12 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 4: Consultation Encounter — CONSULTATION_ENCOUNTER created as child of the Visit Encounter (via partOf). Patient proceeds from nursing station to clinician. This is the key eBUZIMA resource hierarchy link.",
     "_step": "consultation-encounter",
     "_hierarchy": "CHILD of Visit Encounter (via partOf reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0004-4000-8000-000000000004",
     "source": "rhie-mediator",
@@ -250,7 +242,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-consult-20260225-0001",
-
+    "correlationid": "corr-a27aa35e-bb32-52e7-b7e2-4df36ff3a1c6",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-consult-kicukiro-001",
@@ -311,14 +303,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 5: Chief Complaint — Observation with category 'survey'. Clinician records the patient's presenting complaint: persistent headache and mild fever.",
     "_step": "chief-complaint",
     "_hierarchy": "CHILD of Consultation Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0005-4000-8000-000000000005",
     "source": "rhie-mediator",
@@ -328,7 +318,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "obs-cc-20260225-0001",
-
+    "correlationid": "corr-c562daa0-c4da-5d1e-a97d-ed997f09df64",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-cc-kicukiro-001",
@@ -364,14 +354,12 @@
       "valueString": "Persistent headache for 3 days with mild fever and body aches"
     }
   },
-
   {
     "_comment": "EVENT 6: Lab Order — ServiceRequest for Full Blood Count. Clinician suspects infection and orders lab investigation. Category 108252007 (Laboratory procedure), intent: order.",
     "_step": "lab-order",
     "_hierarchy": "CHILD of Consultation Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0006-4000-8000-000000000006",
     "source": "rhie-mediator",
@@ -381,7 +369,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "sr-lab-20260225-0001",
-
+    "correlationid": "corr-49cbb291-a391-5526-84cb-62f60e6d8d13",
     "data": {
       "resourceType": "ServiceRequest",
       "id": "sr-uuid-fbc-kicukiro-001",
@@ -433,14 +421,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 7: Diagnosis — Condition resource. Clinician enters clinical diagnosis: Malaria due to Plasmodium falciparum (ICD-11 1F40). ClinicalStatus active, verificationStatus provisional (awaiting lab confirmation).",
     "_step": "diagnosis",
     "_hierarchy": "CHILD of Consultation Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0007-4000-8000-000000000007",
     "source": "rhie-mediator",
@@ -450,7 +436,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "cond-20260225-0001",
-
+    "correlationid": "corr-345f27e2-ea6b-57bb-9066-b99d053fdfae",
     "data": {
       "resourceType": "Condition",
       "id": "cond-uuid-malaria-kicukiro-001",
@@ -495,14 +481,12 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 8: Medication Prescription — MedicationRequest for Artemether-Lumefantrine (SNOMED 429681001). E-Prescription with groupIdentifier linking related medications.",
     "_step": "medication-prescription",
     "_hierarchy": "CHILD of Consultation Encounter (via encounter reference)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0008-4000-8000-000000000008",
     "source": "rhie-mediator",
@@ -512,7 +496,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "medreq-20260225-0001",
-
+    "correlationid": "corr-41940d15-a6fe-59ef-bb56-60ab0b9a62b4",
     "data": {
       "resourceType": "MedicationRequest",
       "id": "medreq-uuid-alm-kicukiro-001",
@@ -577,14 +561,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 9: Lab Result — Observation with category 'laboratory'. Lab technician enters Full Blood Count results (WBC elevated, suggesting infection). Arrives asynchronously after lab processing.",
     "_step": "lab-result",
     "_hierarchy": "CHILD of Visit Encounter (lab results reference visit, not consultation)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0009-4000-8000-000000000009",
     "source": "rhie-mediator",
@@ -594,7 +576,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "obs-lab-fbc-20260225-0001",
-
+    "correlationid": "corr-40a4bec7-318b-5abf-abe8-bb29ff014c54",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-fbc-kicukiro-001",
@@ -670,14 +652,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 10: Medication Dispensing — MedicationDispense from pharmacy. Pharmacist dispenses the Artemether-Lumefantrine prescribed earlier. References the original MedicationRequest.",
     "_step": "medication-dispensing",
     "_hierarchy": "CHILD of Visit Encounter (dispensing happens at pharmacy station)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0010-4000-8000-000000000010",
     "source": "rhie-mediator",
@@ -687,7 +667,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "meddisp-20260225-0001",
-
+    "correlationid": "corr-3c54396f-0ed6-5b0d-b527-494839a898f9",
     "data": {
       "resourceType": "MedicationDispense",
       "id": "meddisp-uuid-alm-kicukiro-001",
@@ -731,14 +711,12 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 11: Visit Closure — VISIT_ENCOUNTER updated to status 'finished'. The visit period end time is set. This is the final step in the eBUZIMA workflow (PUT /Encounter/{visit-id}). All clinical activities are complete.",
     "_step": "visit-completion (VISIT_ENCOUNTER status → finished)",
     "_hierarchy": "ROOT — same resource as enrollment, now closed",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260225-0002-5501",
-
     "specversion": "1.0",
     "id": "evt-eb010001-0011-4000-8000-000000000011",
     "source": "rhie-mediator",
@@ -748,7 +726,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-visit-close-20260225-0001",
-
+    "correlationid": "corr-29ad4a32-ebc0-5c3c-97bc-09f90a01fe65",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-visit-kicukiro-001",

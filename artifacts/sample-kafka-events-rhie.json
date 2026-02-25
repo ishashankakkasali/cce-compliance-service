@@ -5,13 +5,11 @@
     "_facility": "Kibagabaga Level Two Teaching Hospital (FOSA ID: 0001)",
     "_protocol": "PlanDefinition/anc-high-risk|2.1"
   },
-
   {
     "_comment": "EVENT 1: ANC Enrollment — EpisodeOfCare created when patient is registered for ANC program. This triggers protocol instance creation and instantiates the first step (anc-visit-1).",
     "_step": "enrollment",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-1111-4000-8000-000000000001",
     "source": "rhie-mediator",
@@ -20,6 +18,7 @@
     "time": "2026-01-15T08:30:00Z",
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
+    "correlationid": "corr-95fe0bdb-6462-5f36-ba91-c18caca81cd2",
     "data": {
       "resourceType": "EpisodeOfCare",
       "id": "eoc-uuid-anc-enrollment-001",
@@ -47,13 +46,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 2: ANC Visit 1 — First antenatal care visit (ambulatory encounter). Completes the anc-visit-1 step. This should trigger progressive instantiation of anc-visit-2.",
     "_step": "anc-visit-1",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-2222-4000-8000-000000000002",
     "source": "rhie-mediator",
@@ -63,6 +60,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "enc-visit-20260129-001",
+    "correlationid": "corr-8f90a2ce-f19b-5204-9ea0-8a9294e873d4",
     "data": {
       "resourceType": "Encounter",
       "id": "9a8e5398-aaaa-4111-84a0-9e1e6e0a0001",
@@ -118,13 +116,11 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 3: Vital Signs — High blood pressure recorded during ANC Visit 1. This matches the high-bp-followup optional step trigger (Observation with systolic BP > 140).",
     "_step": "high-bp-followup (optional, triggers if BP > 140)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-3333-4000-8000-000000000003",
     "source": "rhie-mediator",
@@ -134,6 +130,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "obs-bp-20260129-001",
+    "correlationid": "corr-b1b7fa28-5b44-5e92-ae95-f6c434d24fe1",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-bp-systolic-001",
@@ -179,13 +176,11 @@
       "effectiveDateTime": "2026-01-29T09:15:00Z"
     }
   },
-
   {
     "_comment": "EVENT 4: ANC Visit 2 — Second ANC visit at 8 weeks. Completes the dependent anc-visit-2 step (which was instantiated after anc-visit-1 completed). Arrives on time.",
     "_step": "anc-visit-2",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-4444-4000-8000-000000000004",
     "source": "rhie-mediator",
@@ -195,6 +190,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "enc-visit-20260312-001",
+    "correlationid": "corr-e24f0d02-3f53-5407-a12f-e09509e81763",
     "data": {
       "resourceType": "Encounter",
       "id": "9a8e5398-bbbb-4111-84a0-9e1e6e0a0002",
@@ -250,13 +246,11 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 5: Monthly Checkup 1/6 — First monthly checkup encounter. Matches the recurring monthly-checkup step (repeat_index=0).",
     "_step": "monthly-checkup (repeat 1 of 6)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-5555-4000-8000-000000000005",
     "source": "rhie-mediator",
@@ -266,6 +260,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "enc-monthly-20260215-001",
+    "correlationid": "corr-47b2d247-3f18-5534-b12c-871ffb1850f0",
     "data": {
       "resourceType": "Encounter",
       "id": "9a8e5398-cccc-4111-84a0-9e1e6e0a0003",
@@ -321,18 +316,15 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Lab Order → Result Flow (as part of ANC visit) ===",
     "_patient": "Same patient — lab order during ANC Visit 1"
   },
-
   {
     "_comment": "EVENT 6: Lab Order — ServiceRequest for Full Blood Count ordered during ANC visit. This may match a lab-order step if defined in the protocol.",
     "_step": "lab-order (if protocol includes lab step)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-6666-4000-8000-000000000006",
     "source": "rhie-mediator",
@@ -342,6 +334,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "sr-lab-20260129-001",
+    "correlationid": "corr-70cbc894-1d06-5b0f-bb43-b0060781da16",
     "data": {
       "resourceType": "ServiceRequest",
       "id": "sr-uuid-fbc-001",
@@ -386,13 +379,11 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 7: Lab Result — Observation with FBC results. Completes the lab result step if present in protocol.",
     "_step": "lab-result (if protocol includes lab result step)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-7777-4000-8000-000000000007",
     "source": "rhie-mediator",
@@ -402,6 +393,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "obs-fbc-20260130-001",
+    "correlationid": "corr-b35ac3e5-113f-5d81-955d-91771b6d8a9f",
     "data": {
       "resourceType": "Observation",
       "id": "obs-uuid-fbc-result-001",
@@ -447,20 +439,17 @@
       "effectiveDateTime": "2026-01-30T14:00:00Z"
     }
   },
-
   {
     "_comment": "=== SCENARIO: Malaria Treatment Protocol — Different Patient, Different Facility ===",
     "_patient": "Jean-Pierre HABIMANA, UPID: 260210-0002-3451, enrolled in Malaria Treatment Protocol v1.0",
     "_facility": "Kicukiro Health Center (FOSA ID: 0002)",
     "_protocol": "PlanDefinition/malaria-treatment|1.0"
   },
-
   {
     "_comment": "EVENT 8: Malaria Diagnosis — Condition resource with ICD-11 code for malaria. Triggers enrollment in the Malaria Treatment Protocol.",
     "_step": "enrollment",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-b2c3d4e5-1111-4000-8000-000000000008",
     "source": "rhie-mediator",
@@ -470,6 +459,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "cond-malaria-20260210-001",
+    "correlationid": "corr-1c3bdb61-8348-503c-b46b-a92c7be18518",
     "data": {
       "resourceType": "Condition",
       "id": "cond-uuid-malaria-001",
@@ -511,13 +501,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 9: Malaria Medication Prescribed — MedicationRequest for antimalarial treatment (Artemether-Lumefantrine). Completes the 'prescribe-antimalarial' step.",
     "_step": "prescribe-antimalarial",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-b2c3d4e5-2222-4000-8000-000000000009",
     "source": "rhie-mediator",
@@ -527,6 +515,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "medreq-malaria-20260210-001",
+    "correlationid": "corr-8a6424d7-f928-5969-b624-634ee11291ee",
     "data": {
       "resourceType": "MedicationRequest",
       "id": "medreq-uuid-antimalarial-001",
@@ -589,13 +578,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 10: Medication Dispensed — MedicationDispense confirming pharmacy dispensed the antimalarial. Completes the 'dispense-medication' step.",
     "_step": "dispense-medication",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-b2c3d4e5-3333-4000-8000-000000000010",
     "source": "rhie-mediator",
@@ -605,6 +592,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "meddisp-malaria-20260210-001",
+    "correlationid": "corr-c213c703-118b-585c-9167-184f247735ed",
     "data": {
       "resourceType": "MedicationDispense",
       "id": "meddisp-uuid-antimalarial-001",
@@ -644,13 +632,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 11: Malaria Follow-Up Visit — Encounter 7 days after treatment to confirm recovery. Completes the 'follow-up-visit' step.",
     "_step": "follow-up-visit (7 days post-treatment)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-b2c3d4e5-4444-4000-8000-000000000011",
     "source": "rhie-mediator",
@@ -660,6 +646,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-followup-20260217-001",
+    "correlationid": "corr-a1b4f1bc-a8ae-50df-b062-5240005e62b8",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-followup-malaria-001",
@@ -715,18 +702,15 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Edge Cases & Special Events ===",
     "_description": "Duplicate event, explicit routing, late event, zero-match"
   },
-
   {
     "_comment": "EVENT 12: Duplicate Event — Same id+source as EVENT 2. Should be detected as duplicate via event_log unique constraint and return processing_status='duplicate'.",
     "_expected_outcome": "Idempotent — no state change, processing_status='duplicate'",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-2222-4000-8000-000000000002",
     "source": "rhie-mediator",
@@ -736,6 +720,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "enc-visit-20260129-001",
+    "correlationid": "corr-8f90a2ce-f19b-5204-9ea0-8a9294e873d4",
     "data": {
       "resourceType": "Encounter",
       "id": "9a8e5398-aaaa-4111-84a0-9e1e6e0a0001",
@@ -778,13 +763,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 13: Explicit Routing — Event with protocolinstanceid and actionid extension attributes. Source system (tightly integrated EMR) knows exactly which protocol instance and step this event belongs to. CCE bypasses inferred matching.",
     "_expected_outcome": "Explicit match — validate trigger + state only, skip inference",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-8888-4000-8000-000000000013",
     "source": "smartcare-emr",
@@ -797,6 +780,7 @@
     "actionid": "anc-visit-3",
     "facilityid": "0001",
     "sourceeventid": "enc-visit-20260416-001",
+    "correlationid": "corr-92788176-9d0c-552c-add9-343bdb3f4eca",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-explicit-001",
@@ -840,13 +824,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 14: Late-Arriving Event — ANC visit that actually occurred 5 days ago but is arriving now (e.g., facility was offline). The event.time is in the past. CCE should use 'time' (not 'received_at') for compliance calculations.",
     "_expected_outcome": "Late event processed — step completion based on event.time, not received_at",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-9999-4000-8000-000000000014",
     "source": "rhie-mediator",
@@ -856,6 +838,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "enc-late-20260410-001",
+    "correlationid": "corr-3a7aae06-42b7-528c-bf9e-74e2e24413ad",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-late-arrival-001",
@@ -898,13 +881,11 @@
       }
     }
   },
-
   {
     "_comment": "EVENT 15: Zero-Match Event — A general outpatient encounter that matches no PlanDefinition trigger. This is a valid clinical event but not part of any tracked compliance protocol.",
     "_expected_outcome": "Zero match — event logged with processing_status='zero_match', no intelligence alert",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-a1b2c3d4-aaaa-4000-8000-000000000015",
     "source": "rhie-mediator",
@@ -913,6 +894,7 @@
     "time": "2026-03-05T15:00:00Z",
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
+    "correlationid": "corr-a727ae59-c778-540a-8a8a-769233ddcf56",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-generic-opd-001",
@@ -954,20 +936,17 @@
       }
     }
   },
-
   {
     "_comment": "=== SCENARIO: Immunization Protocol ===",
     "_patient": "Baby ISHIMWE Marie, UPID: 260101-0001-1234, child immunization schedule",
     "_facility": "Kibagabaga Level Two Teaching Hospital (FOSA ID: 0001)",
     "_protocol": "PlanDefinition/child-immunization|1.0"
   },
-
   {
     "_comment": "EVENT 16: Immunization — BCG vaccine administered at birth. Enrollment + first step completion for immunization protocol.",
     "_step": "bcg-vaccination",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260101-0001-1234",
-
     "specversion": "1.0",
     "id": "evt-c3d4e5f6-1111-4000-8000-000000000016",
     "source": "rhie-mediator",
@@ -977,6 +956,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "imm-bcg-20260101-001",
+    "correlationid": "corr-4182bfd2-1ade-5ba2-b472-402869586468",
     "data": {
       "resourceType": "Immunization",
       "id": "imm-uuid-bcg-001",
@@ -1020,13 +1000,11 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 17: Immunization — Pentavalent 1 (DPT-HepB-Hib) at 6 weeks. Completes the 'penta-1' step.",
     "_step": "penta-1 (6 weeks)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260101-0001-1234",
-
     "specversion": "1.0",
     "id": "evt-c3d4e5f6-2222-4000-8000-000000000017",
     "source": "rhie-mediator",
@@ -1036,6 +1014,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "imm-penta1-20260212-001",
+    "correlationid": "corr-c7ca28e7-b6e4-59f7-973a-5d2313daac2c",
     "data": {
       "resourceType": "Immunization",
       "id": "imm-uuid-penta1-001",
@@ -1079,18 +1058,15 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Non-FHIR Payload (named-event trigger mode) ===",
     "_description": "Legacy system using arbitrary JSON instead of FHIR resources. Matched via named-event trigger + JSONLogic condition."
   },
-
   {
     "_comment": "EVENT 18: Non-FHIR payload from legacy CHW app — community health worker reports a home visit. Uses 'application/json' content type and named-event matching.",
     "_step": "chw-home-visit (matched via named-event trigger + JSONLogic)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-d4e5f6a7-1111-4000-8000-000000000018",
     "source": "chw-app-musanze",
@@ -1100,6 +1076,7 @@
     "datacontenttype": "application/json",
     "facilityid": "0003",
     "sourceeventid": "hv-20260220-001",
+    "correlationid": "corr-a6f24984-e198-5774-a63a-0071941a37a5",
     "data": {
       "visit_type": "anc-home-visit",
       "status": "completed",
@@ -1118,18 +1095,15 @@
       "next_facility_visit_scheduled": "2026-03-12"
     }
   },
-
   {
     "_comment": "=== SCENARIO: Medical Procedure (Patient Flow PDF — 'Conducts Medical Procedures if necessary') ===",
     "_description": "The Patient Flow chart shows that during consultation, clinical staff may conduct medical procedures. This is modeled as a FHIR Procedure resource with ICHI coding (http://www.ichi.org/)."
   },
-
   {
     "_comment": "EVENT 19: Procedure — Obstetric ultrasound performed during ANC visit 2. Tied to ANC high-risk patient Esperance UWIMANA at Kibagabaga. Uses ICHI coding for procedure classification and SNOMED for category.",
     "_step": "procedure-ultrasound (optional step in anc-high-risk protocol)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260115-0001-7823",
-
     "specversion": "1.0",
     "id": "evt-e5f6a7b8-1111-4000-8000-000000000019",
     "source": "rhie-mediator",
@@ -1139,7 +1113,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0001",
     "sourceeventid": "proc-20260210-001",
-
+    "correlationid": "corr-a419b8ac-10ac-59a2-8007-6154bdc2b4f2",
     "data": {
       "resourceType": "Procedure",
       "id": "proc-uuid-obs-ultrasound-001",
@@ -1198,18 +1172,15 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Transfer / Referral to Higher Facility (Patient Flow PDF — 'Refer to higher facility?' → 'Fills External Transfer Form') ===",
     "_description": "After consultation, if a patient needs referral, the nurse fills an External Transfer Form and records the transfer event in eBUZIMA. This flows as a TRANSFER_ENCOUNTER through RHIE to CCE."
   },
-
   {
     "_comment": "EVENT 20: Transfer Encounter — Malaria patient Jean-Pierre HABIMANA referred from Kicukiro Health Center to CHUK (higher facility) for severe malaria management. Includes hospitalization.destination for the referral target.",
     "_step": "referral-transfer (optional step in malaria-treatment protocol)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-f6a7b8c9-1111-4000-8000-000000000020",
     "source": "rhie-mediator",
@@ -1219,7 +1190,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-transfer-20260214-001",
-
+    "correlationid": "corr-182634b9-3fbe-5e72-913b-94b6a60b8d1a",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-transfer-malaria-001",
@@ -1323,18 +1294,15 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Visit → Consultation Encounter Hierarchy (RHIE encounter model) ===",
     "_description": "RHIE models health-center visits as a VISIT_ENCOUNTER container with child CONSULTATION_ENCOUNTER(s) linked via 'partOf'. This demonstrates the nested encounter hierarchy used in the eBUZIMA workflow per the Patient Flow chart."
   },
-
   {
     "_comment": "EVENT 21a: Visit Encounter (parent) — Malaria follow-up: patient arrives at Kicukiro HC. This is the top-level VISIT_ENCOUNTER container. The Compliance Service sees it as an Encounter event but it may not match any protocol step trigger directly.",
     "_step": "(informational — no direct step match; establishes visit context)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-a7b8c9d0-1111-4000-8000-000000000021",
     "source": "rhie-mediator",
@@ -1344,7 +1312,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-visit-20260212-001",
-
+    "correlationid": "corr-67159876-4ca3-5c12-b1b9-f95d5243e316",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-visit-container-001",
@@ -1384,13 +1352,11 @@
       ]
     }
   },
-
   {
     "_comment": "EVENT 21b: Consultation Encounter (child) — The clinical consultation within the parent visit. References parent visit via 'partOf'. This is the encounter that protocol step triggers typically match against (e.g., malaria follow-up-visit step).",
     "_step": "follow-up-visit (malaria-treatment protocol — matches type:follow-up-visit, status:finished, class:AMB, serviceType:malaria-followup)",
     "_kafka_topic": "cce.events.inbound",
     "_kafka_key": "260210-0002-3451",
-
     "specversion": "1.0",
     "id": "evt-b8c9d0e1-1111-4000-8000-000000000022",
     "source": "rhie-mediator",
@@ -1400,7 +1366,7 @@
     "datacontenttype": "application/fhir+json",
     "facilityid": "0002",
     "sourceeventid": "enc-consult-20260212-001",
-
+    "correlationid": "corr-2ac56394-f211-522f-84e3-7091239b4de2",
     "data": {
       "resourceType": "Encounter",
       "id": "enc-uuid-consultation-001",
@@ -1471,17 +1437,14 @@
       ]
     }
   },
-
   {
     "_comment": "=== SCENARIO: Scheduler-Generated Events ===",
     "_description": "These events arrive on cce.scheduler.triggers topic (not cce.events.inbound). Published by the Scheduler Service for time-based step state transitions."
   },
-
   {
     "_comment": "SCHEDULER EVENT 1: Step transitions from 'pending' to 'due' — due_date has been reached for anc-visit-2.",
     "_kafka_topic": "cce.scheduler.triggers",
     "_kafka_key": "260115-0001-7823",
-
     "type": "state_transition",
     "step_instance_id": "si-uuid-anc-visit-2-001",
     "protocol_instance_id": "pi-uuid-67890",
@@ -1491,12 +1454,10 @@
     "timestamp": "2026-03-12T00:00:00Z",
     "reason": "due_date_reached"
   },
-
   {
     "_comment": "SCHEDULER EVENT 2: Step transitions from 'due' to 'overdue' — tolerance window (3 days) expired. A deviation record should be created.",
     "_kafka_topic": "cce.scheduler.triggers",
     "_kafka_key": "260115-0001-7823",
-
     "type": "state_transition",
     "step_instance_id": "si-uuid-anc-visit-2-001",
     "protocol_instance_id": "pi-uuid-67890",
@@ -1510,12 +1471,10 @@
       "tolerance_days": 3
     }
   },
-
   {
     "_comment": "SCHEDULER EVENT 3: Step transitions from 'overdue' to 'missed' — missed cutoff reached. A deviation record should be created. Progressive instantiation check should fire for dependent steps.",
     "_kafka_topic": "cce.scheduler.triggers",
     "_kafka_key": "260115-0001-7823",
-
     "type": "state_transition",
     "step_instance_id": "si-uuid-anc-visit-2-001",
     "protocol_instance_id": "pi-uuid-67890",
