@@ -1120,6 +1120,359 @@
   },
 
   {
+    "_comment": "=== SCENARIO: Medical Procedure (Patient Flow PDF — 'Conducts Medical Procedures if necessary') ===",
+    "_description": "The Patient Flow chart shows that during consultation, clinical staff may conduct medical procedures. This is modeled as a FHIR Procedure resource with ICHI coding (http://www.ichi.org/)."
+  },
+
+  {
+    "_comment": "EVENT 19: Procedure — Obstetric ultrasound performed during ANC visit 2. Tied to ANC high-risk patient Esperance UWIMANA at Kibagabaga. Uses ICHI coding for procedure classification and SNOMED for category.",
+    "_step": "procedure-ultrasound (optional step in anc-high-risk protocol)",
+    "_kafka_topic": "cce.events.inbound",
+    "_kafka_key": "260115-0001-7823",
+
+    "specversion": "1.0",
+    "id": "evt-e5f6a7b8-1111-4000-8000-000000000019",
+    "source": "rhie-mediator",
+    "type": "org.openphc.cce.procedure",
+    "subject": "260115-0001-7823",
+    "time": "2026-02-10T11:45:00Z",
+    "datacontenttype": "application/fhir+json",
+    "facilityid": "0001",
+    "sourceeventid": "proc-20260210-001",
+
+    "data": {
+      "resourceType": "Procedure",
+      "id": "proc-uuid-obs-ultrasound-001",
+      "status": "completed",
+      "category": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "386637004",
+            "display": "Obstetric procedure"
+          }
+        ]
+      },
+      "code": {
+        "coding": [
+          {
+            "system": "http://www.ichi.org/",
+            "code": "JHD.DB.AC",
+            "display": "Ultrasonography of uterus"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/260115-0001-7823",
+        "display": "Esperance UWIMANA"
+      },
+      "encounter": {
+        "reference": "Encounter/enc-uuid-anc-visit-2-001"
+      },
+      "performedDateTime": "2026-02-10T11:45:00Z",
+      "performer": [
+        {
+          "actor": {
+            "reference": "Practitioner/b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+            "display": "Dr. MUGISHA Gilbert"
+          }
+        }
+      ],
+      "location": {
+        "reference": "Location/1163f2b9-08b0-4333-8e60-6a6fadc91f4f",
+        "display": "Kibagabaga Level Two Teaching Hospital"
+      },
+      "outcome": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "385669000",
+            "display": "Successful"
+          }
+        ]
+      },
+      "report": [
+        {
+          "reference": "DiagnosticReport/dr-uuid-ultrasound-001"
+        }
+      ]
+    }
+  },
+
+  {
+    "_comment": "=== SCENARIO: Transfer / Referral to Higher Facility (Patient Flow PDF — 'Refer to higher facility?' → 'Fills External Transfer Form') ===",
+    "_description": "After consultation, if a patient needs referral, the nurse fills an External Transfer Form and records the transfer event in eBUZIMA. This flows as a TRANSFER_ENCOUNTER through RHIE to CCE."
+  },
+
+  {
+    "_comment": "EVENT 20: Transfer Encounter — Malaria patient Jean-Pierre HABIMANA referred from Kicukiro Health Center to CHUK (higher facility) for severe malaria management. Includes hospitalization.destination for the referral target.",
+    "_step": "referral-transfer (optional step in malaria-treatment protocol)",
+    "_kafka_topic": "cce.events.inbound",
+    "_kafka_key": "260210-0002-3451",
+
+    "specversion": "1.0",
+    "id": "evt-f6a7b8c9-1111-4000-8000-000000000020",
+    "source": "rhie-mediator",
+    "type": "org.openphc.cce.encounter",
+    "subject": "260210-0002-3451",
+    "time": "2026-02-14T16:30:00Z",
+    "datacontenttype": "application/fhir+json",
+    "facilityid": "0002",
+    "sourceeventid": "enc-transfer-20260214-001",
+
+    "data": {
+      "resourceType": "Encounter",
+      "id": "enc-uuid-transfer-malaria-001",
+      "status": "finished",
+      "class": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "code": "AMB",
+        "display": "ambulatory"
+      },
+      "type": [
+        {
+          "coding": [
+            {
+              "system": "http://openphc.org/encounter-types",
+              "code": "transfer-encounter",
+              "display": "Transfer Encounter"
+            }
+          ]
+        }
+      ],
+      "serviceType": {
+        "coding": [
+          {
+            "system": "http://openphc.org/service-types",
+            "code": "external-transfer",
+            "display": "External Transfer / Referral"
+          }
+        ]
+      },
+      "priority": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v3-ActPriority",
+            "code": "UR",
+            "display": "urgent"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/260210-0002-3451",
+        "display": "Jean-Pierre HABIMANA"
+      },
+      "participant": [
+        {
+          "type": [
+            {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                  "code": "ATND",
+                  "display": "attender"
+                }
+              ]
+            }
+          ],
+          "individual": {
+            "reference": "Practitioner/a1b2c3d4-e5f6-4789-abcd-ef0123456789",
+            "display": "Dr. NIYONZIMA Paul"
+          }
+        }
+      ],
+      "period": {
+        "start": "2026-02-14T16:00:00Z",
+        "end": "2026-02-14T16:30:00Z"
+      },
+      "reasonCode": [
+        {
+          "coding": [
+            {
+              "system": "https://icd.who.int",
+              "code": "1F42",
+              "display": "Malaria due to Plasmodium malariae"
+            }
+          ],
+          "text": "Severe malaria requiring higher-level care"
+        }
+      ],
+      "hospitalization": {
+        "destination": {
+          "reference": "Location/chuk-uuid-higher-facility",
+          "display": "Centre Hospitalier Universitaire de Kigali (CHUK)"
+        },
+        "dischargeDisposition": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+              "code": "other-hcf",
+              "display": "Other healthcare facility"
+            }
+          ]
+        }
+      },
+      "location": [
+        {
+          "location": {
+            "reference": "Location/kicukiro-hc-uuid",
+            "display": "Kicukiro Health Center"
+          },
+          "status": "completed"
+        }
+      ]
+    }
+  },
+
+  {
+    "_comment": "=== SCENARIO: Visit → Consultation Encounter Hierarchy (RHIE encounter model) ===",
+    "_description": "RHIE models health-center visits as a VISIT_ENCOUNTER container with child CONSULTATION_ENCOUNTER(s) linked via 'partOf'. This demonstrates the nested encounter hierarchy used in the eBUZIMA workflow per the Patient Flow chart."
+  },
+
+  {
+    "_comment": "EVENT 21a: Visit Encounter (parent) — Malaria follow-up: patient arrives at Kicukiro HC. This is the top-level VISIT_ENCOUNTER container. The Compliance Service sees it as an Encounter event but it may not match any protocol step trigger directly.",
+    "_step": "(informational — no direct step match; establishes visit context)",
+    "_kafka_topic": "cce.events.inbound",
+    "_kafka_key": "260210-0002-3451",
+
+    "specversion": "1.0",
+    "id": "evt-a7b8c9d0-1111-4000-8000-000000000021",
+    "source": "rhie-mediator",
+    "type": "org.openphc.cce.encounter",
+    "subject": "260210-0002-3451",
+    "time": "2026-02-12T08:00:00Z",
+    "datacontenttype": "application/fhir+json",
+    "facilityid": "0002",
+    "sourceeventid": "enc-visit-20260212-001",
+
+    "data": {
+      "resourceType": "Encounter",
+      "id": "enc-uuid-visit-container-001",
+      "status": "finished",
+      "class": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "code": "AMB",
+        "display": "ambulatory"
+      },
+      "type": [
+        {
+          "coding": [
+            {
+              "system": "http://openphc.org/encounter-types",
+              "code": "visit-encounter",
+              "display": "Visit Encounter"
+            }
+          ]
+        }
+      ],
+      "subject": {
+        "reference": "Patient/260210-0002-3451",
+        "display": "Jean-Pierre HABIMANA"
+      },
+      "period": {
+        "start": "2026-02-12T08:00:00Z",
+        "end": "2026-02-12T12:30:00Z"
+      },
+      "location": [
+        {
+          "location": {
+            "reference": "Location/kicukiro-hc-uuid",
+            "display": "Kicukiro Health Center"
+          },
+          "status": "completed"
+        }
+      ]
+    }
+  },
+
+  {
+    "_comment": "EVENT 21b: Consultation Encounter (child) — The clinical consultation within the parent visit. References parent visit via 'partOf'. This is the encounter that protocol step triggers typically match against (e.g., malaria follow-up-visit step).",
+    "_step": "follow-up-visit (malaria-treatment protocol — matches type:follow-up-visit, status:finished, class:AMB, serviceType:malaria-followup)",
+    "_kafka_topic": "cce.events.inbound",
+    "_kafka_key": "260210-0002-3451",
+
+    "specversion": "1.0",
+    "id": "evt-b8c9d0e1-1111-4000-8000-000000000022",
+    "source": "rhie-mediator",
+    "type": "org.openphc.cce.encounter",
+    "subject": "260210-0002-3451",
+    "time": "2026-02-12T09:15:00Z",
+    "datacontenttype": "application/fhir+json",
+    "facilityid": "0002",
+    "sourceeventid": "enc-consult-20260212-001",
+
+    "data": {
+      "resourceType": "Encounter",
+      "id": "enc-uuid-consultation-001",
+      "status": "finished",
+      "class": {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+        "code": "AMB",
+        "display": "ambulatory"
+      },
+      "type": [
+        {
+          "coding": [
+            {
+              "system": "http://openphc.org/encounter-types",
+              "code": "follow-up-visit",
+              "display": "Follow-Up Visit"
+            }
+          ]
+        }
+      ],
+      "serviceType": {
+        "coding": [
+          {
+            "system": "http://openphc.org/service-types",
+            "code": "malaria-followup",
+            "display": "Malaria Follow-Up"
+          }
+        ]
+      },
+      "subject": {
+        "reference": "Patient/260210-0002-3451",
+        "display": "Jean-Pierre HABIMANA"
+      },
+      "participant": [
+        {
+          "type": [
+            {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                  "code": "ATND",
+                  "display": "attender"
+                }
+              ]
+            }
+          ],
+          "individual": {
+            "reference": "Practitioner/a1b2c3d4-e5f6-4789-abcd-ef0123456789",
+            "display": "Dr. NIYONZIMA Paul"
+          }
+        }
+      ],
+      "period": {
+        "start": "2026-02-12T09:15:00Z",
+        "end": "2026-02-12T10:00:00Z"
+      },
+      "partOf": {
+        "reference": "Encounter/enc-uuid-visit-container-001"
+      },
+      "location": [
+        {
+          "location": {
+            "reference": "Location/kicukiro-hc-uuid",
+            "display": "Kicukiro Health Center"
+          },
+          "status": "completed"
+        }
+      ]
+    }
+  },
+
+  {
     "_comment": "=== SCENARIO: Scheduler-Generated Events ===",
     "_description": "These events arrive on cce.scheduler.triggers topic (not cce.events.inbound). Published by the Scheduler Service for time-based step state transitions."
   },

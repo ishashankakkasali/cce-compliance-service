@@ -12,6 +12,7 @@ Welcome to the **CCE Compliance Service** documentation. This guide provides com
 | [Flow Diagrams](flow-diagrams.md) | Sequence & flowchart diagrams for all major workflows |
 | [API Reference](api-reference.md) | REST endpoints, request/response schemas, authentication |
 | [Data Model](data-model.md) | ER diagram, table schemas, JSONB structures, partitioning |
+| [Data Dictionary](data-dictionary.md) | Complete column-level reference: data types, constraints, enums, indexes, JSONB schemas |
 | [Kafka & Event Architecture](kafka-events.md) | Topics, message schemas, consumer/producer contracts |
 | [Developer Setup & Configuration](developer-setup.md) | Local dev setup, configuration reference, Docker, environment variables |
 

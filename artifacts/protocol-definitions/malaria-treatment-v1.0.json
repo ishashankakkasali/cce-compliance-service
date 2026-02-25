@@ -203,6 +203,60 @@
           "valueInteger": 3
         }
       ]
+    },
+    {
+      "id": "referral-transfer",
+      "title": "Referral / Transfer to Higher Facility",
+      "description": "Optional step: patient is referred to a higher-level facility for severe malaria management. Triggered by a transfer encounter recorded in eBUZIMA. Per Patient Flow: 'Refer to higher facility?' → 'Fills External Transfer Form' → 'Records transfer event in eBUZIMA'.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Encounter",
+              "codeFilter": [
+                {
+                  "path": "type",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/encounter-types",
+                      "code": "transfer-encounter"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "finished"
+                    }
+                  ]
+                },
+                {
+                  "path": "serviceType",
+                  "code": [
+                    {
+                      "system": "http://openphc.org/service-types",
+                      "code": "external-transfer"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ]
     }
   ]
 }

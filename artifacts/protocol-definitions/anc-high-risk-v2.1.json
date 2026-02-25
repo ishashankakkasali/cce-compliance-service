@@ -498,6 +498,51 @@
       ]
     },
     {
+      "id": "procedure-ultrasound",
+      "title": "Medical Procedure — Obstetric Ultrasound",
+      "description": "Optional procedure conducted during an ANC visit (e.g., ultrasound). Triggered by a completed FHIR Procedure resource with obstetric category (SNOMED 386637004). Per Patient Flow: 'Conducts Medical Procedures if necessary'.",
+      "requiredBehavior": "could",
+      "trigger": [
+        {
+          "type": "data-added",
+          "data": [
+            {
+              "type": "Procedure",
+              "codeFilter": [
+                {
+                  "path": "category",
+                  "code": [
+                    {
+                      "system": "http://snomed.info/sct",
+                      "code": "386637004"
+                    }
+                  ]
+                },
+                {
+                  "path": "status",
+                  "code": [
+                    {
+                      "code": "completed"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "relatedAction": [
+        {
+          "actionId": "enrollment",
+          "relationship": "after-start",
+          "offsetDuration": {
+            "value": 0,
+            "unit": "d"
+          }
+        }
+      ]
+    },
+    {
       "id": "chw-home-visit",
       "title": "Community Health Worker Home Visit",
       "description": "Non-FHIR event from CHW mobile app reporting an ANC home visit. Uses named-event trigger with JSONLogic condition matching visit_type and status fields.",
