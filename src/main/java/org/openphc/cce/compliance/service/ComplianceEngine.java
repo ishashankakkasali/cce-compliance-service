@@ -20,6 +20,8 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.EnumSet.of;
+
 /**
  * The CCE Compliance Engine — central orchestrator for inbound event processing.
  * <p>
@@ -147,6 +149,31 @@ public class ComplianceEngine {
                 return;
             }
 
+            // Step 3a: Resolve narrowing context from protocolInstanceId / protocolDefinitionId
+            UUID narrowProtocolDefinitionId = null;
+            if (event.getProtocolInstanceId() != null && !event.getProtocolInstanceId().isBlank()) {
+                try {
+                    UUID piUuid = UUID.fromString(event.getProtocolInstanceId());
+                    Optional<ProtocolInstance> piOpt = protocolInstanceService.findById(piUuid);
+                    if (piOpt.isPresent() && piOpt.get().getPlanDefinition() != null) {
+                        narrowProtocolDefinitionId = piOpt.get().getPlanDefinition().getId();
+                        log.debug("Narrowing structural matching to protocolDefinitionId={} via protocolInstanceId={}",
+                                narrowProtocolDefinitionId, event.getProtocolInstanceId());
+                    }
+                } catch (IllegalArgumentException ex) {
+                    log.warn("Invalid protocolInstanceId={}, ignoring for narrowing", event.getProtocolInstanceId());
+                }
+            }
+            if (narrowProtocolDefinitionId == null
+                    && event.getProtocolDefinitionId() != null && !event.getProtocolDefinitionId().isBlank()) {
+                try {
+                    narrowProtocolDefinitionId = UUID.fromString(event.getProtocolDefinitionId());
+                    log.debug("Narrowing structural matching to protocolDefinitionId={}", narrowProtocolDefinitionId);
+                } catch (IllegalArgumentException ex) {
+                    log.warn("Invalid protocolDefinitionId={}, ignoring for narrowing", event.getProtocolDefinitionId());
+                }
+            }
+
             // Step 4: Tier 1 — Structural matching via all-code-filters-must-match
             List<CodePair> allCodes = extractAllCodes(event);
             List<TriggerIndex> structuralMatches;
@@ -154,6 +181,16 @@ public class ComplianceEngine {
             // Fetch ALL trigger index entries for this resource type
             List<TriggerIndex> allEntries = triggerMatchingService
                     .findStructuralMatches(resourceType, null, null);
+
+            // Narrow by protocolDefinitionId if provided (Section 4.3.4.4)
+            final UUID narrowPdId = narrowProtocolDefinitionId;
+            if (narrowPdId != null) {
+                allEntries = allEntries.stream()
+                        .filter(ti -> narrowPdId.equals(ti.getPlanDefinitionId()))
+                        .collect(Collectors.toList());
+                log.debug("Narrowed trigger index entries to {} for protocolDefinitionId={}",
+                        allEntries.size(), narrowPdId);
+            }
 
             if (allCodes.isEmpty()) {
                 // No codes extracted — return all resource-type matches
@@ -308,9 +345,9 @@ public class ComplianceEngine {
      */
     private void processMatch(CloudEventMessage event, EventLog eventLog,
                                MatchResult match, String patientId) {
-        // Enroll patient (or get existing active instance)
-        ProtocolInstance protocolInstance = protocolInstanceService
-                .enrollOrGetActive(patientId, match.planDefinition());
+        // Resolve protocol instance — use explicit protocolInstanceId if provided (Section 4.3.4.4)
+        ProtocolInstance protocolInstance = resolveProtocolInstance(
+                event, patientId, match.planDefinition());
 
         // Compute due dates from timing/relatedAction offset and tolerance-days extension
         OffsetDateTime dueDate = null;
@@ -375,43 +412,288 @@ public class ComplianceEngine {
 
     /**
      * Processes an explicit match when the inbound CloudEvent carries an actionId.
-     * Bypasses structural matching and directly targets the specified action.
+     * Per Section 4.3.4.4 of the CCE Solution Design:
+     * <ul>
+     *   <li>Bypasses structural matching — goes directly to the named action</li>
+     *   <li>Validates the action's trigger matches the incoming data payload</li>
+     *   <li>Validates the step instance is in an eligible state (PENDING, DUE, OVERDUE)</li>
+     *   <li>Uses protocolInstanceId to skip protocol instance inference when provided</li>
+     *   <li>Uses protocolDefinitionId to narrow to a specific protocol when provided</li>
+     * </ul>
      *
      * @return true if explicit match was handled, false if fallback to structural matching
      */
     private boolean processExplicitMatch(CloudEventMessage event, EventLog eventLog) {
         String actionId = event.getActionId();
+        String protocolInstanceIdStr = event.getProtocolInstanceId();
         String protocolDefId = event.getProtocolDefinitionId();
         String patientId = event.getSubject();
 
-        if (protocolDefId != null && !protocolDefId.isBlank()) {
+        PlanDefinitionEntity pdEntity = null;
+        ProtocolInstance explicitProtocolInstance = null;
+
+        // Path A: protocolInstanceId provided → look up PI, derive PD (skip inference)
+        if (protocolInstanceIdStr != null && !protocolInstanceIdStr.isBlank()) {
+            try {
+                UUID piUuid = UUID.fromString(protocolInstanceIdStr);
+                Optional<ProtocolInstance> piOpt = protocolInstanceService.findById(piUuid);
+                if (piOpt.isPresent()) {
+                    explicitProtocolInstance = piOpt.get();
+                    pdEntity = explicitProtocolInstance.getPlanDefinition();
+                    log.debug("Explicit match: using protocolInstanceId={}, derived PD={}",
+                            protocolInstanceIdStr, pdEntity != null ? pdEntity.getId() : "null");
+                } else {
+                    log.warn("Explicit match: protocolInstanceId={} not found", protocolInstanceIdStr);
+                    return false;
+                }
+            } catch (IllegalArgumentException ex) {
+                log.warn("Explicit match: invalid protocolInstanceId={}", protocolInstanceIdStr);
+                return false;
+            }
+        }
+
+        // Path B: protocolDefinitionId provided → look up PD directly
+        if (pdEntity == null && protocolDefId != null && !protocolDefId.isBlank()) {
             try {
                 UUID pdUuid = UUID.fromString(protocolDefId);
                 Optional<PlanDefinitionEntity> pdOpt = protocolDefinitionService.findById(pdUuid);
-                if (pdOpt.isPresent()) {
-                    PlanDefinitionEntity pdEntity = pdOpt.get();
-                    String pdJson = objectMapper.writeValueAsString(pdEntity.getDefinition());
+                if (pdOpt.isPresent() && pdOpt.get().getStatus() == PlanDefinitionStatus.ACTIVE) {
+                    pdEntity = pdOpt.get();
+                } else {
+                    log.warn("Explicit match: protocolDefinitionId={} not found or not active", protocolDefId);
+                    return false;
+                }
+            } catch (IllegalArgumentException ex) {
+                log.warn("Explicit match: invalid protocolDefinitionId={}", protocolDefId);
+                return false;
+            }
+        }
+
+        // Path C: actionId only → scan all active protocol definitions
+        if (pdEntity == null) {
+            for (PlanDefinitionEntity candidate : protocolDefinitionService.findAllActive()) {
+                try {
+                    String pdJson = objectMapper.writeValueAsString(candidate.getDefinition());
                     PlanDefinition pd = planDefinitionParser.parse(pdJson);
+                    boolean hasAction = planDefinitionParser.extractAllActions(pd).stream()
+                            .anyMatch(a -> actionId.equals(a.getId()));
+                    if (hasAction) {
+                        pdEntity = candidate;
+                        break;
+                    }
+                } catch (Exception ex) {
+                    log.debug("Error scanning PD {} for action {}", candidate.getId(), actionId, ex);
+                }
+            }
+            if (pdEntity == null) {
+                log.warn("Explicit match: actionId={} not found in any active protocol definition", actionId);
+                return false;
+            }
+        }
 
-                    Optional<PlanDefinition.PlanDefinitionActionComponent> actionOpt =
-                            planDefinitionParser.extractAllActions(pd).stream()
-                                    .filter(a -> actionId.equals(a.getId()))
-                                    .findFirst();
+        // Locate the target action within the resolved PlanDefinition
+        PlanDefinition.PlanDefinitionActionComponent targetAction;
+        try {
+            String pdJson = objectMapper.writeValueAsString(pdEntity.getDefinition());
+            PlanDefinition pd = planDefinitionParser.parse(pdJson);
+            Optional<PlanDefinition.PlanDefinitionActionComponent> actionOpt =
+                    planDefinitionParser.extractAllActions(pd).stream()
+                            .filter(a -> actionId.equals(a.getId()))
+                            .findFirst();
+            if (actionOpt.isEmpty()) {
+                log.warn("Explicit match: actionId={} not found in PD {}", actionId, pdEntity.getId());
+                return false;
+            }
+            targetAction = actionOpt.get();
+        } catch (Exception ex) {
+            log.warn("Explicit match: error parsing PD {}: {}", pdEntity.getId(), ex.getMessage());
+            return false;
+        }
 
-                    if (actionOpt.isPresent()) {
-                        MatchResult match = new MatchResult(pdEntity, actionId, actionOpt.get());
-                        processMatch(event, eventLog, match, patientId);
-                        eventsMatchedCounter.increment();
-                        log.info("Explicit match processed: eventId={}, actionId={}", event.getId(), actionId);
+        // --- Validate trigger match (Section 4.3.4.4: validate trigger matches incoming data) ---
+        if (!validateExplicitTriggerMatch(targetAction, event)) {
+            log.warn("Explicit match: trigger validation failed for actionId={}, eventType={}, eventId={}",
+                    actionId, event.getType(), event.getId());
+            return false;
+        }
+
+        // --- Resolve protocol instance ---
+        ProtocolInstance protocolInstance = explicitProtocolInstance;
+        if (protocolInstance == null) {
+            protocolInstance = protocolInstanceService.enrollOrGetActive(patientId, pdEntity);
+        }
+
+        // --- Validate step state eligibility (Section 4.3.4.4: step must be in eligible state) ---
+        Set<StepState> ELIGIBLE_STATES = EnumSet.of(StepState.PENDING, StepState.DUE, StepState.OVERDUE);
+        List<StepInstance> activeSteps = stepInstanceService
+                .findActiveByProtocolInstanceAndAction(protocolInstance.getId(), actionId);
+        if (!activeSteps.isEmpty()) {
+            StepInstance eligibleStep = activeSteps.get(0);
+            if (!ELIGIBLE_STATES.contains(eligibleStep.getState())) {
+                log.warn("Explicit match: step for actionId={} is in state {} (not eligible), eventId={}",
+                        actionId, eligibleStep.getState(), event.getId());
+                return false;
+            }
+            log.debug("Explicit match: found eligible step {} in state {} for actionId={}",
+                    eligibleStep.getId(), eligibleStep.getState(), actionId);
+        }
+        // If no existing step, processMatch will create one (valid for enrollment actions)
+
+        // --- Process the explicit match ---
+        MatchResult match = new MatchResult(pdEntity, actionId, targetAction);
+        processMatchWithInstance(event, eventLog, match, patientId, protocolInstance);
+        eventsMatchedCounter.increment();
+        log.info("Explicit match processed: eventId={}, actionId={}, protocolInstanceId={}",
+                event.getId(), actionId, protocolInstance.getId());
+        return true;
+    }
+
+    /**
+     * Validates that the action's trigger definition matches the incoming event's data payload.
+     * Checks resource type and code filter alignment.
+     */
+    private boolean validateExplicitTriggerMatch(
+            PlanDefinition.PlanDefinitionActionComponent action, CloudEventMessage event) {
+        String eventResourceType = extractResourceType(event);
+        if (eventResourceType == null) return false;
+
+        // Check if any trigger on the action matches the event's resource type
+        boolean resourceTypeMatched = false;
+        if (action.hasTrigger()) {
+            for (org.hl7.fhir.r4.model.TriggerDefinition trigger : action.getTrigger()) {
+                if (trigger.hasData()) {
+                    for (org.hl7.fhir.r4.model.DataRequirement dr : trigger.getData()) {
+                        if (eventResourceType.equalsIgnoreCase(dr.getType())) {
+                            resourceTypeMatched = true;
+                            // Verify code filters if present
+                            if (dr.hasCodeFilter()) {
+                                List<CodePair> eventCodes = extractAllCodes(event);
+                                Set<String> eventCodeKeys = eventCodes.stream()
+                                        .map(cp -> cp.system() + "|" + cp.code())
+                                        .collect(Collectors.toSet());
+                                for (org.hl7.fhir.r4.model.DataRequirement.DataRequirementCodeFilterComponent cf : dr.getCodeFilter()) {
+                                    if (cf.hasCode()) {
+                                        boolean anyCodeMatches = cf.getCode().stream().anyMatch(coding -> {
+                                            String key = coding.getSystem() + "|" + coding.getCode();
+                                            return eventCodeKeys.contains(key);
+                                        });
+                                        if (!anyCodeMatches) {
+                                            return false; // code filter not satisfied
+                                        }
+                                    }
+                                }
+                            }
+                            return true; // trigger matched
+                        }
+                    }
+                }
+                // Named-event triggers — match by event type or name
+                if (trigger.getType() == org.hl7.fhir.r4.model.TriggerDefinition.TriggerType.NAMEDEVENT
+                        && trigger.hasName()) {
+                    if (trigger.getName().equalsIgnoreCase(event.getType())
+                            || trigger.getName().equalsIgnoreCase(eventResourceType)) {
                         return true;
                     }
                 }
-            } catch (Exception ex) {
-                log.warn("Explicit match failed for protocolDefId={}, actionId={}: {}",
-                        protocolDefId, actionId, ex.getMessage());
             }
         }
-        return false;
+        // If the action has no triggers, treat as always matching (enrollment actions, etc.)
+        if (!action.hasTrigger()) return true;
+
+        return resourceTypeMatched;
+    }
+
+    /**
+     * Resolves the protocol instance to use for matching.
+     * If the event carries a protocolInstanceId, uses that directly (skipping inference).
+     * Otherwise, enrolls the patient or returns an existing active instance.
+     *
+     * @see <a href="Section 4.3.4.4">When protocolInstanceId is provided, CCE skips protocol instance inference</a>
+     */
+    private ProtocolInstance resolveProtocolInstance(
+            CloudEventMessage event, String patientId, PlanDefinitionEntity pdEntity) {
+        String protocolInstanceIdStr = event.getProtocolInstanceId();
+        if (protocolInstanceIdStr != null && !protocolInstanceIdStr.isBlank()) {
+            try {
+                UUID piUuid = UUID.fromString(protocolInstanceIdStr);
+                Optional<ProtocolInstance> piOpt = protocolInstanceService.findById(piUuid);
+                if (piOpt.isPresent()) {
+                    log.debug("Using explicit protocolInstanceId={} (skipping inference)", protocolInstanceIdStr);
+                    return piOpt.get();
+                }
+            } catch (IllegalArgumentException ex) {
+                log.warn("Invalid protocolInstanceId={}, falling back to inference", protocolInstanceIdStr);
+            }
+        }
+        return protocolInstanceService.enrollOrGetActive(patientId, pdEntity);
+    }
+
+    /**
+     * Processes a match with an already-resolved protocol instance (used by explicit matching).
+     */
+    private void processMatchWithInstance(CloudEventMessage event, EventLog eventLog,
+                                           MatchResult match, String patientId,
+                                           ProtocolInstance protocolInstance) {
+        // Compute due dates from timing/relatedAction offset and tolerance-days extension
+        OffsetDateTime dueDate = null;
+        OffsetDateTime overdueDate = null;
+        OffsetDateTime missedDate = null;
+
+        Map<String, Object> timing = planDefinitionParser.extractTiming(match.action());
+        if (timing.containsKey("offsetValue")) {
+            Object offsetVal = timing.get("offsetValue");
+            String offsetUnit = (String) timing.get("offsetUnit");
+            if (offsetVal != null && offsetUnit != null) {
+                java.time.Duration offset = convertTimingOffset(offsetVal, offsetUnit);
+                if (offset != null) {
+                    dueDate = OffsetDateTime.now().plus(offset);
+                }
+            }
+        }
+
+        // Apply tolerance-days for overdue calculation
+        Integer toleranceDays = planDefinitionParser.extractToleranceDays(match.action());
+        if (dueDate != null && toleranceDays != null && toleranceDays > 0) {
+            overdueDate = dueDate.plusDays(toleranceDays);
+        }
+
+        // Find or create the step instance for this action
+        StepInstance step = stepInstanceService.createStep(
+                protocolInstance, match.actionId(), dueDate, overdueDate, missedDate);
+
+        // Complete the step
+        StepInstance completedStep = stepInstanceService.completeStep(
+                step.getId(), eventLog.getId(), event.getSource());
+
+        // Update event log with match details
+        eventLogService.updateMatchResult(
+                eventLog.getId(),
+                protocolInstance.getId(),
+                match.planDefinition().getId(),
+                match.actionId(),
+                completedStep.getId(),
+                ProcessingStatus.MATCHED);
+
+        // Progressive step instantiation — create downstream pending steps
+        progressiveStepInstantiation(match, protocolInstance);
+
+        // Evaluate intelligence rules — nested sub-actions with conditions
+        evaluateIntelligenceRules(match, event, protocolInstance, completedStep);
+
+        // Audit
+        auditService.auditSystem("COMPLIANCE", "STEP_COMPLETED",
+                "StepInstance", completedStep.getId().toString(),
+                Map.of(
+                        "protocolInstanceId", protocolInstance.getId().toString(),
+                        "actionId", match.actionId(),
+                        "completionStatus", completedStep.getCompletionStatus() != null
+                                ? completedStep.getCompletionStatus().getValue() : "UNKNOWN",
+                        "eventId", event.getId(),
+                        "matchMode", "explicit"
+                ));
+
+        log.info("Match processed: eventId={}, protocolInstanceId={}, stepId={}, actionId={}",
+                event.getId(), protocolInstance.getId(), completedStep.getId(), match.actionId());
     }
 
     /**

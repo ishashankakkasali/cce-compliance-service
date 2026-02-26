@@ -188,6 +188,18 @@ public class StepInstanceService {
         return stepInstanceRepository.findByProtocolInstanceId(protocolInstanceId);
     }
 
+    /**
+     * Finds active (PENDING, DUE, OVERDUE) step instances for a given protocol instance and action.
+     *
+     * @param protocolInstanceId the protocol instance UUID
+     * @param actionId           the PlanDefinition action ID
+     * @return list of step instances in eligible states
+     */
+    @Transactional(readOnly = true)
+    public List<StepInstance> findActiveByProtocolInstanceAndAction(UUID protocolInstanceId, String actionId) {
+        return stepInstanceRepository.findActiveByProtocolInstanceAndAction(protocolInstanceId, actionId);
+    }
+
     @Transactional(readOnly = true)
     public List<StepInstance> findByProtocolInstanceIdAndState(UUID protocolInstanceId, StepState state) {
         return stepInstanceRepository.findByProtocolInstanceIdAndState(protocolInstanceId, state);
