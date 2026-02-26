@@ -12,6 +12,7 @@ public record ProtocolInstanceDto(
         String patientId,
         String protocolCanonical,
         UUID planDefinitionId,
+        String facilityId,
         OffsetDateTime enrolledAt,
         String status,
         OffsetDateTime createdAt,

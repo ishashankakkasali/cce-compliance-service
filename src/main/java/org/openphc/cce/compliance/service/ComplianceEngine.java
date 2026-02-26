@@ -299,7 +299,7 @@ public class ComplianceEngine {
                         // Intra-protocol ambiguity — flag and record deviations
                         anyAmbiguous = true;
                         for (MatchResult match : protocolMatches) {
-                            ProtocolInstance pi = protocolInstanceService.enrollOrGetActive(patientId, match.planDefinition());
+                            ProtocolInstance pi = protocolInstanceService.enrollOrGetActive(patientId, match.planDefinition(), event.getFacilityId());
                             List<StepInstance> activeSteps = stepInstanceService
                                     .findByProtocolInstanceIdAndState(pi.getId(), StepState.DUE);
                             if (!activeSteps.isEmpty()) {
@@ -520,7 +520,7 @@ public class ComplianceEngine {
         // --- Resolve protocol instance ---
         ProtocolInstance protocolInstance = explicitProtocolInstance;
         if (protocolInstance == null) {
-            protocolInstance = protocolInstanceService.enrollOrGetActive(patientId, pdEntity);
+            protocolInstance = protocolInstanceService.enrollOrGetActive(patientId, pdEntity, event.getFacilityId());
         }
 
         // --- Validate step state eligibility (Section 4.3.4.4: step must be in eligible state) ---
@@ -625,7 +625,7 @@ public class ComplianceEngine {
                 log.warn("Invalid protocolInstanceId={}, falling back to inference", protocolInstanceIdStr);
             }
         }
-        return protocolInstanceService.enrollOrGetActive(patientId, pdEntity);
+        return protocolInstanceService.enrollOrGetActive(patientId, pdEntity, event.getFacilityId());
     }
 
     /**

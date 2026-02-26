@@ -52,6 +52,7 @@ public class DtoMapper {
                 entity.getPatientId(),
                 entity.getProtocolCanonical(),
                 entity.getPlanDefinition() != null ? entity.getPlanDefinition().getId() : null,
+                entity.getFacilityId(),
                 entity.getEnrolledAt(),
                 entity.getStatus().getValue(),
                 entity.getCreatedAt(),

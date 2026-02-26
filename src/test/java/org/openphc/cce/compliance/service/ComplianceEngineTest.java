@@ -103,7 +103,7 @@ class ComplianceEngineTest {
             engine.processInboundEvent(event);
 
             verify(eventLogService).recordEvent(event, ProcessingStatus.ZERO_MATCH);
-            verify(protocolInstanceService, never()).enrollOrGetActive(any(), any());
+            verify(protocolInstanceService, never()).enrollOrGetActive(any(), any(), any());
         }
     }
 
@@ -160,7 +160,7 @@ class ComplianceEngineTest {
             when(expressionEvaluationService.buildVariables(any(), any(), any(), any()))
                     .thenReturn(Map.of("event", Map.of()));
             when(triggerMatchingService.evaluateCondition(eq(action), eq(triggerIdx), any())).thenReturn(true);
-            when(protocolInstanceService.enrollOrGetActive("Patient/123", pdEntity)).thenReturn(pi);
+            when(protocolInstanceService.enrollOrGetActive(eq("Patient/123"), eq(pdEntity), any())).thenReturn(pi);
             when(planDefinitionParser.extractTiming(action)).thenReturn(Map.of());
             when(planDefinitionParser.extractToleranceDays(action)).thenReturn(null);
             when(stepInstanceService.createStep(eq(pi), eq("action-1"), isNull(), isNull(), isNull()))
@@ -172,7 +172,7 @@ class ComplianceEngineTest {
 
             engine.processInboundEvent(event);
 
-            verify(protocolInstanceService).enrollOrGetActive("Patient/123", pdEntity);
+            verify(protocolInstanceService).enrollOrGetActive(eq("Patient/123"), eq(pdEntity), any());
             verify(stepInstanceService).completeStep(step.getId(), eventLog.getId(), "source-1");
             verify(eventLogService).updateMatchResult(
                     eq(eventLog.getId()), eq(pi.getId()), eq(pdEntity.getId()),

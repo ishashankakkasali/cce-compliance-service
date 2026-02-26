@@ -4,8 +4,11 @@ import org.openphc.cce.compliance.domain.entity.PlanDefinitionEntity;
 import org.openphc.cce.compliance.domain.entity.ProtocolInstance;
 import org.openphc.cce.compliance.domain.enums.ProtocolInstanceStatus;
 import org.openphc.cce.compliance.domain.repository.ProtocolInstanceRepository;
+import org.openphc.cce.compliance.domain.repository.ProtocolInstanceSpecifications;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,16 +38,25 @@ public class ProtocolInstanceService {
      *
      * @param patientId      the patient identifier (FHIR Patient reference)
      * @param planDefinition the PlanDefinition to enroll against
+     * @param facilityId     the facility identifier from the inbound event (nullable)
      * @return the active ProtocolInstance (existing or newly created)
      */
-    public ProtocolInstance enrollOrGetActive(String patientId, PlanDefinitionEntity planDefinition) {
+    public ProtocolInstance enrollOrGetActive(String patientId, PlanDefinitionEntity planDefinition,
+                                               String facilityId) {
         // Check for existing active instance
         List<ProtocolInstance> existingList = protocolInstanceRepository
                 .findActiveByPatientIdAndPlanDefinition(patientId, planDefinition.getId());
 
         if (!existingList.isEmpty()) {
+            ProtocolInstance existing = existingList.get(0);
+            // Backfill facilityId if missing on existing instance
+            if (existing.getFacilityId() == null && facilityId != null && !facilityId.isBlank()) {
+                existing.setFacilityId(facilityId);
+                existing.setUpdatedAt(OffsetDateTime.now());
+                existing = protocolInstanceRepository.save(existing);
+            }
             log.debug("Patient {} already enrolled in protocol {}", patientId, planDefinition.getCanonical());
-            return existingList.get(0);
+            return existing;
         }
 
         // Create new protocol instance
@@ -52,15 +64,23 @@ public class ProtocolInstanceService {
         instance.setPatientId(patientId);
         instance.setProtocolCanonical(planDefinition.getCanonical());
         instance.setPlanDefinition(planDefinition);
+        instance.setFacilityId(facilityId);
         instance.setEnrolledAt(OffsetDateTime.now());
         instance.setStatus(ProtocolInstanceStatus.ACTIVE);
         instance.setCreatedAt(OffsetDateTime.now());
         instance.setUpdatedAt(OffsetDateTime.now());
 
         instance = protocolInstanceRepository.save(instance);
-        log.info("Enrolled patient {} in protocol {}: instanceId={}",
-                patientId, planDefinition.getCanonical(), instance.getId());
+        log.info("Enrolled patient {} in protocol {}: instanceId={}, facilityId={}",
+                patientId, planDefinition.getCanonical(), instance.getId(), facilityId);
         return instance;
+    }
+
+    /**
+     * Enrolls a patient in a protocol (convenience overload without facilityId).
+     */
+    public ProtocolInstance enrollOrGetActive(String patientId, PlanDefinitionEntity planDefinition) {
+        return enrollOrGetActive(patientId, planDefinition, null);
     }
 
     /**
@@ -127,5 +147,30 @@ public class ProtocolInstanceService {
     @Transactional(readOnly = true)
     public long countByStatus(ProtocolInstanceStatus status) {
         return protocolInstanceRepository.countByStatus(status);
+    }
+
+    /**
+     * Searches protocol instances with optional filters (all ANDed together).
+     * Supports pagination via Spring Data's {@link Pageable}.
+     *
+     * @param patientId          filter by patient identifier (nullable)
+     * @param protocolCanonical  filter by protocol canonical URL (nullable)
+     * @param status             filter by status (nullable)
+     * @param facilityId         filter by facility identifier (nullable)
+     * @param planDefinitionId   filter by plan-definition ID (nullable)
+     * @param pageable           pagination and sorting parameters
+     * @return paginated list of matching protocol instances
+     */
+    @Transactional(readOnly = true)
+    public Page<ProtocolInstance> search(String patientId,
+                                          String protocolCanonical,
+                                          ProtocolInstanceStatus status,
+                                          String facilityId,
+                                          UUID planDefinitionId,
+                                          Pageable pageable) {
+        return protocolInstanceRepository.findAll(
+                ProtocolInstanceSpecifications.withFilters(
+                        patientId, protocolCanonical, status, facilityId, planDefinitionId),
+                pageable);
     }
 }

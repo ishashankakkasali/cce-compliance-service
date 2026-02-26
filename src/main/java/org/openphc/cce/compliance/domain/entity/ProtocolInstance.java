@@ -15,7 +15,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "protocol_instance", indexes = {
         @Index(name = "idx_protocol_instance_patient", columnList = "patient_id"),
-        @Index(name = "idx_protocol_instance_status", columnList = "status")
+        @Index(name = "idx_protocol_instance_status", columnList = "status"),
+        @Index(name = "idx_protocol_instance_facility", columnList = "facility_id")
 })
 public class ProtocolInstance {
 
@@ -32,6 +33,9 @@ public class ProtocolInstance {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_definition_id", nullable = false)
     private PlanDefinitionEntity planDefinition;
+
+    @Column(name = "facility_id")
+    private String facilityId;
 
     @Column(name = "enrolled_at", nullable = false)
     private OffsetDateTime enrolledAt;
@@ -100,6 +104,14 @@ public class ProtocolInstance {
 
     public void setPlanDefinition(PlanDefinitionEntity planDefinition) {
         this.planDefinition = planDefinition;
+    }
+
+    public String getFacilityId() {
+        return facilityId;
+    }
+
+    public void setFacilityId(String facilityId) {
+        this.facilityId = facilityId;
     }
 
     public OffsetDateTime getEnrolledAt() {
