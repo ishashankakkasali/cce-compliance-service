@@ -223,7 +223,66 @@ Manage FHIR R4 PlanDefinition resources.
 
 Manage patient protocol enrollment lifecycle.
 
-### 2.1 Get Protocol Instance
+### 2.1 List Protocol Instances
+
+**`GET /v1/protocol-instances`** — List protocol instances with optional filters (Section 4.3.6.2).
+
+**Required Scope:** `compliance:read`
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `patientId` | String | No | Filter by patient identifier (e.g. `Patient/123`) |
+| `protocolCanonical` | String | No | Filter by protocol canonical URL |
+| `status` | String | No | Filter by status: `active`, `completed`, `withdrawn`, `expired` |
+| `facilityId` | String | No | Filter by facility identifier |
+| `planDefinitionId` | UUID | No | Filter by plan-definition ID |
+| `page` | int | No | Page number (0-based, default: 0) |
+| `size` | int | No | Page size (default: 20) |
+| `sort` | String | No | Sort field and direction (default: `createdAt,desc`) |
+
+**Response:** `200 OK` — `Page<ProtocolInstanceDto>` (Spring Data paginated response)
+
+```json
+{
+  "content": [
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440001",
+      "patientId": "patient-12345",
+      "protocolCanonical": "http://example.org/PlanDefinition/hiv-treatment|1.0",
+      "planDefinitionId": "550e8400-e29b-41d4-a716-446655440000",
+      "facilityId": "facility-musanze-001",
+      "status": "active",
+      "enrolledAt": "2026-03-15T10:30:00Z",
+      "createdAt": "2026-03-15T10:30:00Z",
+      "updatedAt": "2026-03-15T10:30:00Z",
+      "steps": [],
+      "deviations": []
+    }
+  ],
+  "pageable": { "pageNumber": 0, "pageSize": 20 },
+  "totalElements": 1,
+  "totalPages": 1,
+  "number": 0,
+  "size": 20
+}
+```
+
+**Notes:**
+- Steps and deviations are **excluded** from list responses for performance. Use `GET /v1/protocol-instances/{id}` to fetch full details.
+- All filter parameters are optional and combined with AND logic. Omitting all filters returns all protocol instances.
+- The `facilityId` filter matches against the facility stamped on the protocol instance at enrollment time (from the inbound CloudEvent).
+
+**Error Responses:**
+
+| Status | Condition |
+|---|---|
+| `400 Bad Request` | Invalid `status` value |
+
+---
+
+### 2.2 Get Protocol Instance
 
 **`GET /v1/protocol-instances/{id}`** — Get a protocol instance with its steps and deviations.
 
@@ -237,6 +296,7 @@ Manage patient protocol enrollment lifecycle.
   "patientId": "patient-12345",
   "protocolCanonical": "http://example.org/PlanDefinition/hiv-treatment|1.0",
   "planDefinitionId": "550e8400-e29b-41d4-a716-446655440000",
+  "facilityId": "facility-musanze-001",
   "status": "active",
   "enrolledAt": "2026-03-15T10:30:00Z",
   "createdAt": "2026-03-15T10:30:00Z",
@@ -265,7 +325,7 @@ Manage patient protocol enrollment lifecycle.
 
 ---
 
-### 2.2 Complete Protocol Instance
+### 2.3 Complete Protocol Instance
 
 **`POST /v1/protocol-instances/{id}/complete`** — Mark a protocol as completed.
 
@@ -284,7 +344,7 @@ Manage patient protocol enrollment lifecycle.
 
 ---
 
-### 2.3 Withdraw Protocol Instance
+### 2.4 Withdraw Protocol Instance
 
 **`POST /v1/protocol-instances/{id}/withdraw`** — Withdraw a patient from a protocol.
 
@@ -450,6 +510,7 @@ All errors follow a consistent structure:
 | `patientId` | String | No | Patient identifier |
 | `protocolCanonical` | String | No | `url\|version` of the PlanDefinition |
 | `planDefinitionId` | UUID | No | FK to PlanDefinition |
+| `facilityId` | String | Yes | Facility identifier (stamped at enrollment from CloudEvent) |
 | `status` | String | No | `active`, `completed`, `withdrawn`, `expired` |
 | `enrolledAt` | OffsetDateTime | No | Enrollment timestamp |
 | `createdAt` | OffsetDateTime | No | Record creation |

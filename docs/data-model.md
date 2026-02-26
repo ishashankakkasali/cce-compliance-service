@@ -24,6 +24,7 @@ erDiagram
         varchar patient_id
         varchar protocol_canonical
         uuid plan_definition_id FK
+        varchar facility_id
         timestamptz enrolled_at
         varchar status
         timestamptz created_at
@@ -136,6 +137,7 @@ Tracks patient enrollment in clinical protocols.
 | `patient_id` | `VARCHAR(100)` | NOT NULL | Patient identifier from clinical system |
 | `protocol_canonical` | `VARCHAR(550)` | NOT NULL | `url\|version` reference |
 | `plan_definition_id` | `UUID` | FK → plan_definition(id), NOT NULL | Link to PlanDefinition |
+| `facility_id` | `VARCHAR` | Nullable | Facility identifier (stamped from CloudEvent at enrollment) |
 | `enrolled_at` | `TIMESTAMPTZ` | NOT NULL | Enrollment timestamp |
 | `status` | `VARCHAR(20)` | NOT NULL, default `'active'` | `active`, `completed`, `withdrawn`, `expired` |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL | Record creation |
@@ -148,6 +150,7 @@ Tracks patient enrollment in clinical protocols.
 | `idx_protocol_instance_patient` | B-tree | `patient_id` | Patient lookup |
 | `idx_protocol_instance_status` | B-tree | `status` | Status filtering |
 | `idx_protocol_instance_active` | Partial B-tree | `patient_id, plan_definition_id WHERE status = 'active'` | Fast active enrollment check |
+| `idx_protocol_instance_facility` | Partial B-tree | `facility_id WHERE facility_id IS NOT NULL` | Facility filtering |
 
 ---
 

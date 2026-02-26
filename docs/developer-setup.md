@@ -211,7 +211,8 @@ cce-compliance-service/
 │       └── resources/
 │           ├── application.yml
 │           └── db/migration/
-│               └── V1__initial_schema.sql
+│               ├── V1__initial_schema.sql
+│               └── V2__add_facility_id_to_protocol_instance.sql
 ├── Dockerfile                          # Multi-stage Docker build
 ├── .gitignore
 └── pom.xml                             # Maven build configuration
@@ -251,6 +252,7 @@ mvn flyway:info
 | Version | Description | Script |
 |---|---|---|
 | V1 | Initial schema | `V1__initial_schema.sql` |
+| V2 | Add facility_id to protocol_instance | `V2__add_facility_id_to_protocol_instance.sql` |
 
 ## 6. Docker Build
 

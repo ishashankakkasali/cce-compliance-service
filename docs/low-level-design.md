@@ -28,12 +28,13 @@ org.openphc.cce.compliance
 │   │   ├── ProtocolInstanceStatus.java
 │   │   ├── StepState.java
 │   │   └── TriggerMode.java
-│   └── repository/                            # Spring Data JPA repositories (7 interfaces)
+│   └── repository/                            # Spring Data JPA repositories (7 interfaces + 1 specification)
 │       ├── AuditLogRepository.java
 │       ├── DeviationRepository.java
 │       ├── EventLogRepository.java
 │       ├── PlanDefinitionRepository.java
-│       ├── ProtocolInstanceRepository.java
+│       ├── ProtocolInstanceRepository.java    # + JpaSpecificationExecutor
+│       ├── ProtocolInstanceSpecifications.java # Dynamic JPA Specification builder
 │       ├── StepInstanceRepository.java
 │       └── TriggerIndexRepository.java
 │
@@ -87,7 +88,7 @@ org.openphc.cce.compliance
         └── DtoMapper.java
 ```
 
-**Total: 63 source files** across 15 packages.
+**Total: 64 source files** across 15 packages.
 
 ## 2. Class Relationships
 
@@ -109,6 +110,7 @@ classDiagram
         UUID id
         String patientId
         String protocolCanonical
+        String facilityId
         ProtocolInstanceStatus status
         OffsetDateTime enrolledAt
         List~StepInstance~ stepInstances
@@ -196,7 +198,8 @@ classDiagram
     }
 
     class ProtocolInstanceService {
-        +enrollOrGetActive(patientId, planDef)
+        +enrollOrGetActive(patientId, planDef, facilityId)
+        +search(filters, Pageable) Page
         +completeProtocol(UUID)
         +withdrawProtocol(UUID)
     }
@@ -244,7 +247,7 @@ classDiagram
 
 ## 3. ComplianceEngine — Core Pipeline
 
-The `ComplianceEngine` is the central orchestrator (648 lines). It processes every inbound clinical event through a multi-step pipeline:
+The `ComplianceEngine` is the central orchestrator (~930 lines). It processes every inbound clinical event through a multi-step pipeline:
 
 ### 3.1 Pipeline Steps
 
@@ -537,6 +540,7 @@ The `AuditService` provides an immutable audit trail:
 |---|---|---|
 | `ProtocolInstanceRepository` | `findActiveByPatientId` | `WHERE p.patientId = :id AND p.status = ACTIVE` |
 | `ProtocolInstanceRepository` | `findActiveByPatientIdAndPlanDefinition` | `WHERE p.patientId = :id AND p.planDefinition.id = :planDefId AND p.status = ACTIVE` |
+| `ProtocolInstanceRepository` | `findAll(Specification, Pageable)` | Dynamic AND-combined predicates via `ProtocolInstanceSpecifications.withFilters(...)` |
 | `StepInstanceRepository` | `findActiveByProtocolInstanceAndAction` | `WHERE s.protocolInstance.id = :id AND s.actionId = :actionId AND s.state IN (PENDING, DUE, OVERDUE)` |
 | `StepInstanceRepository` | `findStepsDueBy` | `WHERE s.state = PENDING AND s.dueDate <= :dateTime` |
 | `StepInstanceRepository` | `findStepsOverdueBy` | `WHERE s.state = DUE AND s.overdueDate <= :dateTime` |
@@ -551,6 +555,7 @@ The `AuditService` provides an immutable audit trail:
 | `plan_definition` | `idx_plan_def_definition` | GIN | `definition` (JSONB) |
 | `protocol_instance` | `idx_protocol_instance_patient` | B-tree | `patient_id` |
 | `protocol_instance` | `idx_protocol_instance_active` | Partial B-tree | `patient_id, plan_definition_id WHERE status = 'active'` |
+| `protocol_instance` | `idx_protocol_instance_facility` | Partial B-tree | `facility_id WHERE facility_id IS NOT NULL` |
 | `step_instance` | `idx_step_instance_protocol` | B-tree | `protocol_instance_id` |
 | `step_instance` | `idx_step_active_states` | Partial B-tree | `protocol_instance_id, action_id WHERE state IN ('pending', 'due', 'overdue')` |
 | `step_instance` | `idx_step_due_date` | B-tree | `due_date WHERE state = 'pending'` |

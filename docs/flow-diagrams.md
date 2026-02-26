@@ -235,11 +235,16 @@ flowchart TD
 
     D --> E["Set status = ACTIVE"]
     E --> F["Set enrolledAt = now()"]
-    F --> G["Link to PlanDefinitionEntity"]
+    F --> F2["Set facilityId from<br/>CloudEvent extension"]
+    F2 --> G["Link to PlanDefinitionEntity"]
     G --> H["Set protocolCanonical = url|version"]
 
-    C --> I["Check for existing<br/>active step"]
-    H --> I
+    C --> C2{"facilityId<br/>missing on<br/>existing instance?"}
+    C2 -->|"Yes"| C3["Backfill facilityId<br/>from current event"]
+    C2 -->|"No"| I
+    C3 --> I
+
+    H --> I["Check for existing<br/>active step"]
 
     I -->|"Active step exists<br/>for this actionId"| J["Use existing<br/>StepInstance"]
     I -->|"No active step"| K["Create new<br/>StepInstance"]

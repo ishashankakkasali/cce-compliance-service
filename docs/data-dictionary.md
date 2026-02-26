@@ -106,6 +106,7 @@ Represents a **patient's enrollment** in a specific compliance protocol. Created
 | `patient_id` | `VARCHAR` | **NOT NULL** | — | **Patient identifier.** The UPID (Unique Patient Identifier) of the enrolled patient (e.g., `260115-0001-7823`). Derived from the CloudEvent `subject` field. |
 | `protocol_canonical` | `VARCHAR` | **NOT NULL** | — | **Denormalized canonical reference.** The `url|version` of the enrolled protocol (e.g., `http://openphc.org/fhir/PlanDefinition/anc-high-risk|2.1`). Stored for fast display without joining `plan_definition`. |
 | `plan_definition_id` | `UUID` | **NOT NULL** | — | **Foreign key → `plan_definition.id`.** Links this enrollment to the exact protocol definition version. |
+| `facility_id` | `VARCHAR` | Yes | — | **Facility identifier.** The facility where the patient is enrolled, stamped from the inbound CloudEvent `facilityid` extension at enrollment time. Used for facility-level filtering in the listing API. Nullable for backward compatibility with pre-V2 enrollments. |
 | `enrolled_at` | `TIMESTAMPTZ` | **NOT NULL** | — | **Enrollment timestamp.** When the patient was enrolled in this protocol. Used as the anchor for timing calculations (e.g., "8 weeks post-enrollment"). |
 | `status` | `VARCHAR` | **NOT NULL** | — | **Instance lifecycle status.** See [Enumerated Values: ProtocolInstanceStatus](#protocolinstancestatus). |
 | `created_at` | `TIMESTAMPTZ` | **NOT NULL** | `now()` | **Record creation timestamp.** Immutable once set. |
@@ -125,6 +126,7 @@ Represents a **patient's enrollment** in a specific compliance protocol. Created
 |------|---------|------|---------|
 | `idx_protocol_instance_patient` | `patient_id` | B-tree | Fast lookup of all protocol enrollments for a patient (used by patient-centric tracking APIs). |
 | `idx_protocol_instance_status` | `status` | Partial B-tree (`WHERE status = 'ACTIVE'`) | Optimizes queries for active enrollments, which are the most frequently accessed. |
+| `idx_protocol_instance_facility` | `facility_id` | Partial B-tree (`WHERE facility_id IS NOT NULL`) | Facility-based filtering for the protocol instances listing API. Partial index excludes nulls for pre-V2 enrollments. |
 
 ---
 
@@ -464,6 +466,7 @@ This returns all trigger index entries matching the resource type whose code fil
 | `plan_definition` | `idx_plan_definition_triggers` | `definition` | GIN (jsonb_path_ops) | — |
 | `protocol_instance` | `idx_protocol_instance_patient` | `patient_id` | B-tree | — |
 | `protocol_instance` | `idx_protocol_instance_status` | `status` | B-tree | `WHERE status = 'ACTIVE'` |
+| `protocol_instance` | `idx_protocol_instance_facility` | `facility_id` | B-tree | `WHERE facility_id IS NOT NULL` |
 | `step_instance` | `idx_step_instance_protocol` | `protocol_instance_id` | B-tree | — |
 | `step_instance` | `idx_step_instance_state` | `state` | B-tree | `WHERE state IN ('PENDING', 'DUE', 'OVERDUE')` |
 | `step_instance` | `idx_step_instance_due_date` | `due_date` | B-tree | `WHERE state IN ('PENDING', 'DUE', 'OVERDUE')` |
