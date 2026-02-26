@@ -378,14 +378,14 @@ public void publishTrigger(IntelligenceTriggerEvent event) {
 ### 7.2 DeadLetterProducer
 
 ```java
-public void publishDeadLetter(Object payload, String reason, String stage, String correlationId) {
-    Map<String, Object> envelope = Map.of(
-        "originalEvent", payload,
-        "failureReason", reason,
-        "failureStage", stage,
-        "correlationId", correlationId,
-        "timestamp", OffsetDateTime.now()
-    );
+public void publishDeadLetter(Object originalPayload, String failureReason,
+                              FailureStage failureStage, String correlationId) {
+    Map<String, Object> envelope = new LinkedHashMap<>();
+    envelope.put("payload", originalPayload);
+    envelope.put("failureReason", failureReason);
+    envelope.put("failureStage", failureStage.getValue());
+    envelope.put("correlationId", correlationId);
+    envelope.put("timestamp", OffsetDateTime.now().toString());
     kafkaTemplate.send(topics.getDeadLetter(), correlationId, envelope);
 }
 ```
@@ -411,11 +411,10 @@ flowchart TD
     D -->|"Yes"| E["Acknowledge"]
     D -->|"No"| F["Log error"]
     F --> G["Increment error metric"]
-    G --> H["Dead-letter to DB"]
-    H --> I["Publish to cce.deadletter"]
-    I --> J["Don't acknowledge"]
-    J --> K["Kafka redelivers"]
-    K --> L{"Idempotency check"}
-    L -->|"Duplicate"| M["Skip"]
-    L -->|"Not duplicate<br/>(prev attempt failed before event_log)"| D
+    G --> H["Publish to cce.deadletter"]
+    H --> I["Don't acknowledge"]
+    I --> J["Kafka redelivers"]
+    J --> K{"Idempotency check"}
+    K -->|"Duplicate"| L["Skip"]
+    K -->|"Not duplicate<br/>(prev attempt failed before event_log)"| D
 ```

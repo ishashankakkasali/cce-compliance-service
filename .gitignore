@@ -13,6 +13,5 @@ target/
 *.swp
 *~
 .DS_Store
-.github/
 .mvn/
 .vscode/

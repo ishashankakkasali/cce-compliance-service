@@ -50,7 +50,6 @@ public class ComplianceEngine {
     private final DeviationService deviationService;
     private final AuditService auditService;
     private final DeadLetterProducer deadLetterProducer;
-    private final DeadLetterService deadLetterService;
     private final PlanDefinitionParser planDefinitionParser;
     private final ExpressionEvaluationService expressionEvaluationService;
     private final ObjectMapper objectMapper;
@@ -71,7 +70,6 @@ public class ComplianceEngine {
                              DeviationService deviationService,
                              AuditService auditService,
                              DeadLetterProducer deadLetterProducer,
-                             DeadLetterService deadLetterService,
                              PlanDefinitionParser planDefinitionParser,
                              ExpressionEvaluationService expressionEvaluationService,
                              ObjectMapper objectMapper,
@@ -84,7 +82,6 @@ public class ComplianceEngine {
         this.deviationService = deviationService;
         this.auditService = auditService;
         this.deadLetterProducer = deadLetterProducer;
-        this.deadLetterService = deadLetterService;
         this.planDefinitionParser = planDefinitionParser;
         this.expressionEvaluationService = expressionEvaluationService;
         this.objectMapper = objectMapper;
@@ -297,7 +294,6 @@ public class ComplianceEngine {
 
         } catch (Exception ex) {
             log.error("Compliance engine processing error for event: id={}", event.getId(), ex);
-            deadLetterService.recordDeadLetter(event, ex.getMessage(), FailureStage.PROCESSING);
             deadLetterProducer.publishDeadLetter(event, ex.getMessage(),
                     FailureStage.PROCESSING, event.getCorrelationId());
             throw ex;

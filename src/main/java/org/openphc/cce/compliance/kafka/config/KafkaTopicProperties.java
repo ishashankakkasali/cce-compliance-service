@@ -14,7 +14,6 @@ public class KafkaTopicProperties {
     private String inboundEvents = "cce.events.inbound";
     private String schedulerTriggers = "cce.scheduler.triggers";
     private String intelligenceTriggers = "cce.intelligence.triggers";
-    private String protocolControl = "cce.protocol.control";
     private String deadLetter = "cce.deadletter";
 
     public String getInboundEvents() {
@@ -39,14 +38,6 @@ public class KafkaTopicProperties {
 
     public void setIntelligenceTriggers(String intelligenceTriggers) {
         this.intelligenceTriggers = intelligenceTriggers;
-    }
-
-    public String getProtocolControl() {
-        return protocolControl;
-    }
-
-    public void setProtocolControl(String protocolControl) {
-        this.protocolControl = protocolControl;
     }
 
     public String getDeadLetter() {

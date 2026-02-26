@@ -225,7 +225,7 @@ class ProtocolDefinitionServiceTest {
     }
 
     @Nested
-    @DisplayName("findByXxx queries")
+    @DisplayName("query methods")
     class QueryMethods {
 
         @Test

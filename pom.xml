@@ -21,11 +21,10 @@
         <java.version>21</java.version>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.release></maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <hapi-fhir.version>7.4.0</hapi-fhir.version>
         <json-logic.version>1.0.7</json-logic.version>
         <cql-engine.version>3.26.0</cql-engine.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
     </properties>
 
     <dependencies>
@@ -45,12 +44,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <!-- ==================== Redis (Cache & Scheduler Queue) ==================== -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
         <!-- ==================== Kafka ==================== -->
@@ -128,13 +121,6 @@
             <groupId>info.cqframework</groupId>
             <artifactId>cql-to-elm</artifactId>
             <version>${cql-engine.version}</version>
-        </dependency>
-
-        <!-- ==================== Resilience (Circuit Breaker) ==================== -->
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>${resilience4j.version}</version>
         </dependency>
 
         <!-- ==================== Observability ==================== -->

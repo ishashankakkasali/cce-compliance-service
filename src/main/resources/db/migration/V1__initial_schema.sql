@@ -119,21 +119,6 @@ CREATE TABLE event_log_2026_05 PARTITION OF event_log
 CREATE TABLE event_log_2026_06 PARTITION OF event_log
     FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
 
--- ==================== Dead-Letter Events ====================
-CREATE TABLE dead_letter_events (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    payload         JSONB NOT NULL,
-    failure_reason  VARCHAR NOT NULL,
-    failure_stage   VARCHAR NOT NULL CHECK (failure_stage IN ('KAFKA_PUBLISH', 'PROCESSING', 'VALIDATION')),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    retry_count     INTEGER NOT NULL DEFAULT 0,
-    next_retry_at   TIMESTAMPTZ,
-    resolved        BOOLEAN NOT NULL DEFAULT false,
-    resolved_at     TIMESTAMPTZ
-);
-
-CREATE INDEX idx_dead_letter_unresolved ON dead_letter_events (next_retry_at) WHERE resolved = false;
-
 -- ==================== Audit Log ====================
 CREATE TABLE audit_log (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

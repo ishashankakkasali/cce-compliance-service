@@ -85,18 +85,6 @@ erDiagram
         uuid matched_step_instance_id
     }
 
-    DEAD_LETTER_EVENTS {
-        uuid id PK
-        jsonb payload
-        text failure_reason
-        varchar failure_stage
-        timestamptz created_at
-        int retry_count
-        timestamptz next_retry_at
-        boolean resolved
-        timestamptz resolved_at
-    }
-
     AUDIT_LOG {
         uuid id PK
         varchar event_category
@@ -291,31 +279,7 @@ CREATE TABLE event_log_2026_02 PARTITION OF event_log
 
 ---
 
-### 2.7 dead_letter_events
-
-Stores failed events with retry tracking.
-
-| Column | Type | Constraints | Description |
-|---|---|---|---|
-| `id` | `UUID` | PK | Unique identifier |
-| `payload` | `JSONB` | NOT NULL | Original event payload |
-| `failure_reason` | `TEXT` | NOT NULL | Exception message |
-| `failure_stage` | `VARCHAR(30)` | NOT NULL | `kafka_publish`, `processing`, `validation` |
-| `created_at` | `TIMESTAMPTZ` | NOT NULL, default `NOW()` | When failure occurred |
-| `retry_count` | `INTEGER` | NOT NULL, default 0 | Number of retry attempts |
-| `next_retry_at` | `TIMESTAMPTZ` | | Next retry schedule |
-| `resolved` | `BOOLEAN` | NOT NULL, default `false` | Whether resolved |
-| `resolved_at` | `TIMESTAMPTZ` | | Resolution timestamp |
-
-**Indexes:**
-
-| Index | Type | Columns | Purpose |
-|---|---|---|---|
-| `idx_dead_letter_unresolved` | Partial B-tree | `next_retry_at WHERE resolved = false` | Find retryable events |
-
----
-
-### 2.8 audit_log
+### 2.7 audit_log
 
 Immutable audit trail for all significant operations.
 
@@ -424,21 +388,6 @@ Context-specific metadata:
   "matchedActionIds": ["action-1", "action-2"],
   "eventType": "cce.observation.created",
   "resourceType": "Observation"
-}
-```
-
-### 3.4 dead_letter_events.payload
-
-Serialized CloudEventMessage that failed processing:
-
-```json
-{
-  "id": "evt-12345",
-  "source": "ehr-lab-system",
-  "type": "cce.observation.created",
-  "specVersion": "1.0",
-  "data": { ... },
-  "correlationId": "corr-abc123"
 }
 ```
 

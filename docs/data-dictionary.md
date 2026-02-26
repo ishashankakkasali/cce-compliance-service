@@ -15,19 +15,18 @@
 5. [deviation](#5-deviation)
 6. [trigger_index](#6-trigger_index)
 7. [event_log](#7-event_log)
-8. [dead_letter_events](#8-dead_letter_events)
-9. [audit_log](#9-audit_log)
-10. [Enumerated Value Reference](#10-enumerated-value-reference)
-11. [Relationships & Foreign Keys](#11-relationships--foreign-keys)
-12. [Indexes](#12-indexes)
-13. [Partitioning Strategy](#13-partitioning-strategy)
-14. [JSONB Column Schemas](#14-jsonb-column-schemas)
+8. [audit_log](#8-audit_log)
+9. [Enumerated Value Reference](#9-enumerated-value-reference)
+10. [Relationships & Foreign Keys](#10-relationships--foreign-keys)
+11. [Indexes](#11-indexes)
+12. [Partitioning Strategy](#12-partitioning-strategy)
+13. [JSONB Column Schemas](#13-jsonb-column-schemas)
 
 ---
 
 ## 1. Overview
 
-The CCE Compliance Service database consists of **8 tables** that support the full compliance engine lifecycle — from protocol definition loading and trigger indexing, through patient enrollment and step tracking, to event logging, deviation detection, and operational audit trails.
+The CCE Compliance Service database consists of **7 tables** that support the full compliance engine lifecycle — from protocol definition loading and trigger indexing, through patient enrollment and step tracking, to event logging, deviation detection, and operational audit trails.
 
 ### Entity Relationship Summary
 
@@ -39,7 +38,6 @@ plan_definition ──1:N──▶ protocol_instance ──1:N──▶ step_ins
        └──1:N──▶ trigger_index
 
 event_log          (standalone, references by UUID but no FK constraint)
-dead_letter_events (standalone, stores failed event payloads)
 audit_log          (standalone, immutable audit trail)
 ```
 
@@ -53,8 +51,7 @@ audit_log          (standalone, immutable audit trail)
 | 4 | `deviation` | Compliance deviations (overdue, missed, ambiguous) | Medium | No |
 | 5 | `trigger_index` | Inverted index for fast Tier 1 structural event matching | Low (rebuilt on protocol load) | No |
 | 6 | `event_log` | Immutable log of all inbound CloudEvents and their processing outcomes | High (every event) | **Yes** (monthly by `received_at`) |
-| 7 | `dead_letter_events` | Failed events for retry/investigation | Low (error cases only) | No |
-| 8 | `audit_log` | System and user audit trail | Medium–High | No |
+| 7 | `audit_log` | System and user audit trail | Medium–High | No |
 
 ---
 
@@ -337,42 +334,7 @@ This returns all trigger index entries matching the resource type whose code fil
 
 ---
 
-## 8. dead_letter_events
-
-### Purpose
-
-Stores **failed events** that could not be processed by the Compliance Engine due to errors (validation failures, processing exceptions, Kafka publish failures). Provides a retry mechanism with exponential backoff and a resolution workflow for operations teams.
-
-### Columns
-
-| Column | Data Type | Nullable | Default | Description |
-|--------|-----------|----------|---------|-------------|
-| `id` | `UUID` | **NOT NULL** | `gen_random_uuid()` | **Primary key.** Unique identifier for this dead letter entry. |
-| `payload` | `JSONB` | **NOT NULL** | — | **Original event payload.** The complete CloudEventMessage that failed processing, serialized as JSONB. Enables manual inspection and replay. |
-| `failure_reason` | `VARCHAR` | **NOT NULL** | — | **Error description.** Human-readable description of why processing failed (typically the exception message). |
-| `failure_stage` | `VARCHAR` | **NOT NULL** | — | **Pipeline stage.** Where in the processing pipeline the failure occurred. See [Enumerated Values: FailureStage](#failurestage). |
-| `created_at` | `TIMESTAMPTZ` | **NOT NULL** | `now()` | **Creation timestamp.** When the dead letter entry was recorded. |
-| `retry_count` | `INTEGER` | **NOT NULL** | `0` | **Retry attempts.** Number of times the system has attempted to re-process this event. Incremented on each retry with exponential backoff. |
-| `next_retry_at` | `TIMESTAMPTZ` | Yes | — | **Next retry timestamp.** When the next automated retry should be attempted. Calculated using exponential backoff: `created_at + (2^retry_count * base_interval)`. `NULL` if max retries exceeded or manually resolved. |
-| `resolved` | `BOOLEAN` | **NOT NULL** | `false` | **Resolution flag.** Whether this dead letter has been resolved (either successfully retried or manually dismissed). |
-| `resolved_at` | `TIMESTAMPTZ` | Yes | — | **Resolution timestamp.** When the dead letter was marked as resolved. `NULL` if unresolved. |
-
-### Constraints
-
-| Type | Name | Details |
-|------|------|---------|
-| Primary Key | `dead_letter_events_pkey` | `id` |
-| Check | — | `failure_stage IN ('KAFKA_PUBLISH', 'PROCESSING', 'VALIDATION')` |
-
-### Indexes
-
-| Name | Columns | Type | Purpose |
-|------|---------|------|---------|
-| `idx_dead_letter_unresolved` | `next_retry_at` | Partial B-tree (`WHERE resolved = false`) | Efficiently finds unresolved dead letters eligible for retry. |
-
----
-
-## 9. audit_log
+## 8. audit_log
 
 ### Purpose
 
@@ -511,7 +473,6 @@ Stores **failed events** that could not be processed by the Compliance Engine du
 | `trigger_index` | `idx_trigger_index_code` | `(resource_type, code_system, code_value)` | B-tree | — |
 | `event_log` | `idx_event_log_subject` | `subject` | B-tree | — |
 | `event_log` | `idx_event_log_facility` | `facility_id` | B-tree | `WHERE facility_id IS NOT NULL` |
-| `dead_letter_events` | `idx_dead_letter_unresolved` | `next_retry_at` | B-tree | `WHERE resolved = false` |
 | `audit_log` | `idx_audit_log_category` | `event_category` | B-tree | — |
 | `audit_log` | `idx_audit_log_actor` | `actor` | B-tree | — |
 | `audit_log` | `idx_audit_log_timestamp` | `timestamp` | B-tree | — |
@@ -657,22 +618,6 @@ For non-FHIR events (e.g., CHW home visits):
   "status": "completed",
   "chw_id": "CHW-MUSANZE-042",
   "blood_pressure": { "systolic": 135, "diastolic": 85 }
-}
-```
-
-### dead_letter_events — `payload`
-
-Contains the complete serialized CloudEventMessage:
-
-```json
-{
-  "id": "evt-...",
-  "source": "rhie-mediator",
-  "type": "org.openphc.cce.encounter",
-  "subject": "260115-0001-7823",
-  "time": "2026-01-29T09:00:00Z",
-  "data": { "resourceType": "..." },
-  "facilityid": "0001"
 }
 ```
 

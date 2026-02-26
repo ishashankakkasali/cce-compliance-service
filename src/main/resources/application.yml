@@ -58,18 +58,6 @@ spring:
       ack-mode: manual
       concurrency: 3
 
-  # ==================== Redis ====================
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 5
-          min-idle: 2
-
   # ==================== Jackson ====================
   jackson:
     serialization:
@@ -90,7 +78,6 @@ cce:
       inbound-events: cce.events.inbound
       scheduler-triggers: cce.scheduler.triggers
       intelligence-triggers: cce.intelligence.triggers
-      protocol-control: cce.protocol.control
       dead-letter: cce.deadletter
 
 # ==================== Actuator & Observability ====================
