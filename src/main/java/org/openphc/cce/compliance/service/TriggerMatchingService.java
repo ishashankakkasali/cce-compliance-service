@@ -7,6 +7,7 @@ import org.openphc.cce.compliance.fhir.PlanDefinitionParser;
 import org.hl7.fhir.r4.model.PlanDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,17 +54,26 @@ public class TriggerMatchingService {
      */
     public List<TriggerIndex> findStructuralMatches(String resourceType, String codeSystem, String codeValue) {
         if (codeSystem != null && codeValue != null) {
-            List<TriggerIndex> matches = triggerIndexRepository
-                    .findByResourceTypeAndCode(resourceType, codeSystem, codeValue);
+            List<TriggerIndex> matches = findByResourceTypeAndCode(resourceType, codeSystem, codeValue);
             log.debug("Tier 1 structural match: resourceType={}, code={}/{}, matches={}",
                     resourceType, codeSystem, codeValue, matches.size());
             return matches;
         }
 
-        List<TriggerIndex> matches = triggerIndexRepository.findByResourceType(resourceType);
+        List<TriggerIndex> matches = findByResourceType(resourceType);
         log.debug("Tier 1 structural match (resource-only): resourceType={}, matches={}",
                 resourceType, matches.size());
         return matches;
+    }
+
+    @Cacheable(value = "triggersByResourceTypeAndCode", key = "#resourceType + ':' + #codeSystem + ':' + #codeValue")
+    public List<TriggerIndex> findByResourceTypeAndCode(String resourceType, String codeSystem, String codeValue) {
+        return triggerIndexRepository.findByResourceTypeAndCode(resourceType, codeSystem, codeValue);
+    }
+
+    @Cacheable(value = "triggersByResourceType", key = "#resourceType")
+    public List<TriggerIndex> findByResourceType(String resourceType) {
+        return triggerIndexRepository.findByResourceType(resourceType);
     }
 
     /**

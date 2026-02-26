@@ -15,6 +15,9 @@ import org.openphc.cce.compliance.fhir.PlanDefinitionParser.CodeFilter;
 import org.hl7.fhir.r4.model.TriggerDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +62,12 @@ public class ProtocolDefinitionService {
      * @return the saved PlanDefinitionEntity
      */
     @SuppressWarnings("unchecked")
+    @Caching(evict = {
+            @CacheEvict(value = "triggersByResourceType", allEntries = true),
+            @CacheEvict(value = "triggersByResourceTypeAndCode", allEntries = true),
+            @CacheEvict(value = "planDefinitionById", allEntries = true),
+            @CacheEvict(value = "activePlanDefinitions", allEntries = true)
+    })
     public PlanDefinitionEntity loadPlanDefinition(String planDefinitionJson) {
         PlanDefinition parsed = planDefinitionParser.parse(planDefinitionJson);
 
@@ -105,6 +114,12 @@ public class ProtocolDefinitionService {
      * @param url     the PlanDefinition canonical URL
      * @param version the PlanDefinition version
      */
+    @Caching(evict = {
+            @CacheEvict(value = "triggersByResourceType", allEntries = true),
+            @CacheEvict(value = "triggersByResourceTypeAndCode", allEntries = true),
+            @CacheEvict(value = "planDefinitionById", allEntries = true),
+            @CacheEvict(value = "activePlanDefinitions", allEntries = true)
+    })
     public void retirePlanDefinition(String url, String version) {
         PlanDefinitionEntity entity = planDefinitionRepository.findByUrlAndVersion(url, version)
                 .orElseThrow(() -> new NoSuchElementException(
@@ -127,6 +142,12 @@ public class ProtocolDefinitionService {
      * @throws NoSuchElementException if the PlanDefinition does not exist
      * @throws IllegalStateException  if protocol instances reference this definition
      */
+    @Caching(evict = {
+            @CacheEvict(value = "triggersByResourceType", allEntries = true),
+            @CacheEvict(value = "triggersByResourceTypeAndCode", allEntries = true),
+            @CacheEvict(value = "planDefinitionById", allEntries = true),
+            @CacheEvict(value = "activePlanDefinitions", allEntries = true)
+    })
     public void deletePlanDefinition(UUID id) {
         PlanDefinitionEntity entity = planDefinitionRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException(
@@ -160,6 +181,7 @@ public class ProtocolDefinitionService {
     /**
      * Retrieves all active PlanDefinitions.
      */
+    @Cacheable(value = "activePlanDefinitions")
     @Transactional(readOnly = true)
     public List<PlanDefinitionEntity> findAllActive() {
         return planDefinitionRepository.findByStatus(PlanDefinitionStatus.ACTIVE);
@@ -168,6 +190,7 @@ public class ProtocolDefinitionService {
     /**
      * Retrieves a PlanDefinition by ID.
      */
+    @Cacheable(value = "planDefinitionById", key = "#id")
     @Transactional(readOnly = true)
     public Optional<PlanDefinitionEntity> findById(UUID id) {
         return planDefinitionRepository.findById(id);
@@ -184,6 +207,10 @@ public class ProtocolDefinitionService {
     /**
      * Rebuilds the trigger index for a PlanDefinition from its stored FHIR definition.
      */
+    @Caching(evict = {
+            @CacheEvict(value = "triggersByResourceType", allEntries = true),
+            @CacheEvict(value = "triggersByResourceTypeAndCode", allEntries = true)
+    })
     public void rebuildTriggerIndex(UUID planDefinitionId) {
         PlanDefinitionEntity entity = planDefinitionRepository.findById(planDefinitionId)
                 .orElseThrow(() -> new NoSuchElementException(

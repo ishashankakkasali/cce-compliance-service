@@ -2,6 +2,10 @@ spring:
   application:
     name: cce-compliance-service
 
+  # ==================== Cache ====================
+  cache:
+    type: caffeine
+
   # ==================== Database ====================
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:cce_compliance}
