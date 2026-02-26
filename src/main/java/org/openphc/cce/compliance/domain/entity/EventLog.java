@@ -18,7 +18,7 @@ import java.util.UUID;
         @Index(name = "idx_event_log_subject", columnList = "subject"),
         @Index(name = "idx_event_log_facility", columnList = "facility_id")
 }, uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"cloudevents_id", "source"})
+        @UniqueConstraint(columnNames = {"cloudevents_id", "source", "received_at"})
 })
 public class EventLog {
 

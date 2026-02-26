@@ -51,7 +51,6 @@ cce:
       inbound-events: cce.events.inbound
       scheduler-triggers: cce.scheduler.triggers
       intelligence-triggers: cce.intelligence.triggers
-      protocol-control: cce.protocol.control
       dead-letter: cce.deadletter
 
 # Actuator

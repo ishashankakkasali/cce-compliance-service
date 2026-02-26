@@ -37,7 +37,6 @@ class ComplianceEngineTest {
     @Mock private DeviationService deviationService;
     @Mock private AuditService auditService;
     @Mock private DeadLetterProducer deadLetterProducer;
-    @Mock private DeadLetterService deadLetterService;
     @Mock private PlanDefinitionParser planDefinitionParser;
     @Mock private ExpressionEvaluationService expressionEvaluationService;
     @Mock private ObjectMapper objectMapper;
@@ -51,7 +50,7 @@ class ComplianceEngineTest {
         engine = new ComplianceEngine(
                 eventLogService, triggerMatchingService, protocolDefinitionService,
                 protocolInstanceService, stepInstanceService, deviationService,
-                auditService, deadLetterProducer, deadLetterService,
+                auditService, deadLetterProducer,
                 planDefinitionParser, expressionEvaluationService,
                 objectMapper, meterRegistry);
     }
@@ -226,7 +225,6 @@ class ComplianceEngineTest {
             assertThatThrownBy(() -> engine.processInboundEvent(event))
                     .isInstanceOf(RuntimeException.class);
 
-            verify(deadLetterService).recordDeadLetter(event, "DB error", FailureStage.PROCESSING);
             verify(deadLetterProducer).publishDeadLetter(eq(event), eq("DB error"),
                     eq(FailureStage.PROCESSING), any());
         }

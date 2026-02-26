@@ -302,28 +302,18 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["Event Processing Error"] --> B["Catch Exception in ComplianceEngine"]
-    B --> C["DeadLetterService.recordDeadLetter()"]
+    B --> C["DeadLetterProducer.publishDeadLetter()"]
 
-    C --> D["Create DeadLetterEvent"]
+    C --> D["Build dead-letter envelope"]
     D --> E["Set failureReason = exception message"]
     E --> F["Set failureStage = PROCESSING"]
-    F --> G["Set retryCount = 0"]
-    G --> H["Set nextRetryAt = now + 5 min"]
-    H --> I["Persist to DB"]
+    F --> G["Set correlationId"]
+    G --> H["Kafka: cce.deadletter<br/>key = correlationId"]
 
-    I --> J["DeadLetterProducer.publishDeadLetter()"]
-    J --> K["Kafka: cce.deadletter<br/>key = correlationId"]
-
-    subgraph "Retry Loop (External)"
-        L["Retry Job polls findRetryableEvents()"]
-        L --> M{"retryCount < 5?"}
-        M -->|"Yes"| N["Reprocess event"]
-        N --> O{"Success?"}
-        O -->|"Yes"| P["resolveDeadLetter()"]
-        O -->|"No"| Q["incrementRetry()"]
-        Q --> R["nextRetryAt = now + 5×2^retryCount min"]
-        R --> L
-        M -->|"No"| S["Permanent Failure<br/>Manual Resolution Required"]
+    subgraph "Downstream (Collector Service)"
+        H --> I["Collector consumes dead-letter event"]
+        I --> J["Persist to dead_letter_event table"]
+        J --> K["Retry / Manual Resolution"]
     end
 ```
 

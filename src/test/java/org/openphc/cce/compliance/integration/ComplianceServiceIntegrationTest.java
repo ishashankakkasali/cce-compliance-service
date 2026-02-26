@@ -43,7 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "cce.events.inbound",
                 "cce.scheduler.triggers",
                 "cce.intelligence.triggers",
-                "cce.protocol.control",
                 "cce.deadletter"
         },
         brokerProperties = {"listeners=PLAINTEXT://localhost:0"}

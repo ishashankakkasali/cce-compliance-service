@@ -4,9 +4,7 @@ package org.openphc.cce.compliance.domain.enums;
  * Stage at which an event failed, resulting in a dead-letter entry.
  */
 public enum FailureStage {
-    KAFKA_PUBLISH("kafka_publish"),
-    PROCESSING("processing"),
-    VALIDATION("validation");
+    PROCESSING("processing");
 
     private final String value;
 

@@ -141,7 +141,6 @@ public class ExpressionEvaluationService {
      *                   containing a Map representation of a FHIR resource)
      * @return true if the expression evaluates to truthy
      */
-    @SuppressWarnings("unchecked")
     private boolean evaluateFhirPath(String expression, Map<String, Object> variables) {
         try {
             // Get the FHIR resource data from variables

@@ -75,7 +75,6 @@ graph TB
         DVS["DeviationService"]
         ELS["EventLogService"]
         AUS["AuditService"]
-        DLS["DeadLetterService"]
     end
 
     subgraph "FHIR & Expression Layer"
@@ -107,7 +106,7 @@ graph TB
     CE --> DVS
     CE --> ELS
     CE --> AUS
-    CE --> DLS
+    CE --> PDP
     CE --> PDP
     CE --> EES
     KCC --> CE

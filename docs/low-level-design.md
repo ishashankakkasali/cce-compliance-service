@@ -7,14 +7,12 @@ org.openphc.cce.compliance
 ├── ComplianceServiceApplication.java          # @SpringBootApplication entry point
 │
 ├── config/
-│   ├── AppConfig.java                         # ObjectMapper, @EnableAsync
-│   ├── ObservabilityConfig.java               # Micrometer gauges & common tags
-│   └── SecurityConfig.java                    # OAuth2 JWT, scope-based ACL
+│   ├── AppConfig.java                         # ObjectMapper, @EnableAsync, TaskExecutor
+│   └── ObservabilityConfig.java               # Micrometer gauges & common tags
 │
 ├── domain/
-│   ├── entity/                                # JPA entities (8 classes)
+│   ├── entity/                                # JPA entities (7 classes)
 │   │   ├── AuditLog.java
-│   │   ├── DeadLetterEvent.java
 │   │   ├── Deviation.java
 │   │   ├── EventLog.java
 │   │   ├── PlanDefinitionEntity.java
@@ -30,9 +28,8 @@ org.openphc.cce.compliance
 │   │   ├── ProtocolInstanceStatus.java
 │   │   ├── StepState.java
 │   │   └── TriggerMode.java
-│   └── repository/                            # Spring Data JPA repositories (8 interfaces)
+│   └── repository/                            # Spring Data JPA repositories (7 interfaces)
 │       ├── AuditLogRepository.java
-│       ├── DeadLetterEventRepository.java
 │       ├── DeviationRepository.java
 │       ├── EventLogRepository.java
 │       ├── PlanDefinitionRepository.java
@@ -62,10 +59,9 @@ org.openphc.cce.compliance
 │       ├── DeadLetterProducer.java             # cce.deadletter publisher
 │       └── IntelligenceTriggerProducer.java    # cce.intelligence.triggers publisher
 │
-├── service/                                   # Business logic (9 classes)
+├── service/                                   # Business logic (8 classes)
 │   ├── AuditService.java
 │   ├── ComplianceEngine.java                  # Central orchestrator
-│   ├── DeadLetterService.java
 │   ├── DeviationService.java
 │   ├── EventLogService.java
 │   ├── ProtocolDefinitionService.java
@@ -160,16 +156,6 @@ classDiagram
         UUID matchedStepInstanceId
     }
 
-    class DeadLetterEvent {
-        UUID id
-        Map~String,Object~ payload
-        String failureReason
-        FailureStage failureStage
-        int retryCount
-        OffsetDateTime nextRetryAt
-        boolean resolved
-    }
-
     class AuditLog {
         UUID id
         String eventCategory
@@ -243,12 +229,6 @@ classDiagram
         +auditSystem(category, type, ...)
     }
 
-    class DeadLetterService {
-        +recordDeadLetter(payload, reason, stage)
-        +incrementRetry(UUID)
-        +resolveDeadLetter(UUID)
-    }
-
     ComplianceEngine --> ProtocolDefinitionService
     ComplianceEngine --> ProtocolInstanceService
     ComplianceEngine --> StepInstanceService
@@ -256,12 +236,10 @@ classDiagram
     ComplianceEngine --> DeviationService
     ComplianceEngine --> EventLogService
     ComplianceEngine --> AuditService
-    ComplianceEngine --> DeadLetterService
     ComplianceEngine --> PlanDefinitionParser
     ComplianceEngine --> ExpressionEvaluationService
     ExpressionEvaluationService --> CqlEvaluationEngine
     DeviationService --> IntelligenceTriggerProducer
-    DeadLetterService ..> DeadLetterProducer : optional
 ```
 
 ## 3. ComplianceEngine — Core Pipeline
@@ -564,7 +542,6 @@ The `AuditService` provides an immutable audit trail:
 | `StepInstanceRepository` | `findStepsOverdueBy` | `WHERE s.state = DUE AND s.overdueDate <= :dateTime` |
 | `StepInstanceRepository` | `findStepsMissedBy` | `WHERE s.state = OVERDUE AND s.missedDate <= :dateTime` |
 | `TriggerIndexRepository` | `findByResourceTypeAndCode` | `WHERE resourceType = :type AND (code_system = :sys AND code_value = :val OR code_system IS NULL)` |
-| `DeadLetterEventRepository` | `findRetryableEvents` | `WHERE resolved = false AND nextRetryAt <= :now` |
 
 ### 10.2 Indexing Strategy
 
@@ -579,5 +556,4 @@ The `AuditService` provides an immutable audit trail:
 | `step_instance` | `idx_step_due_date` | B-tree | `due_date WHERE state = 'pending'` |
 | `event_log` | `idx_event_log_cloudevents` | UNIQUE B-tree | `(cloudeventsid, source)` |
 | `event_log` | `idx_event_log_subject` | B-tree | `subject` |
-| `dead_letter_events` | `idx_dead_letter_unresolved` | Partial B-tree | `next_retry_at WHERE resolved = false` |
 | `audit_log` | Various | B-tree | `event_category`, `actor`, `timestamp` |

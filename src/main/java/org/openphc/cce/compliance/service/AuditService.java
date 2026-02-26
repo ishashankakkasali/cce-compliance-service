@@ -34,7 +34,7 @@ public class AuditService {
     /**
      * Records an audit log entry asynchronously in a new transaction.
      */
-    @Async
+    @Async("asyncExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void audit(String eventCategory, String eventType, String actor,
                       String resourceType, String resourceId,
@@ -57,7 +57,7 @@ public class AuditService {
     /**
      * Convenience method for system-initiated audit events.
      */
-    @Async
+    @Async("asyncExecutor")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void auditSystem(String eventCategory, String eventType,
                              String resourceType, String resourceId,
