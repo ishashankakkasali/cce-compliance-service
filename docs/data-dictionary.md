@@ -590,17 +590,17 @@ The `InboundEventConsumer` calls `FacilityService.upsertFacility()` for every in
 
 Resource-type-specific paths for `facility_id` and `facility_name`, tried in order until one resolves:
 
-| Resource Type | `facility_id` source (priority order) | `facility_name` source |
+| Resource Type | `facility_id` source (priority order) | `facility_name` source (priority order) |
 |---------------|---------------------|----------------------|
-| `ServiceRequest` | `locationReference[0].reference` (strip prefix) or `identifier.value` | `locationReference[0].display` |
-| `Encounter` | 1. `hospitalization.origin.reference`/`identifier.value` 2. `location[0].location.reference`/`identifier.value` | Display of whichever reference node resolved the id above |
-| `Procedure` | `location.reference` (strip prefix) or `identifier.value` | `location.display` |
-| `Immunization` | `location.reference` (strip prefix) or `identifier.value` | `location.display` |
-| Any other type (`Observation`, `Condition`, `MedicationRequest`, ...) | `source-facility` extension `valueString` — the only signal these resource types carry | `null` (extension has no display) |
+| `ServiceRequest` | `locationReference[0].reference` (strip prefix) or `identifier.value` | envelope `facilityname`, else `locationReference[0].display` |
+| `Encounter` | 1. `hospitalization.origin.reference`/`identifier.value` 2. `location[0].location.reference`/`identifier.value` | envelope `facilityname`, else display of whichever reference node resolved the id above |
+| `Procedure` | `location.reference` (strip prefix) or `identifier.value` | envelope `facilityname`, else `location.display` |
+| `Immunization` | `location.reference` (strip prefix) or `identifier.value` | envelope `facilityname`, else `location.display` |
+| Any other type (`Observation`, `Condition`, `MedicationRequest`, ...) | `source-facility` extension `valueString` — the only signal these resource types carry | envelope `facilityname`, else `null` (extension has no display) |
 
 Per FHIR R4 (https://hl7.org/fhir/R4/encounter.html), `hospitalization` is only ever populated on a transfer `Encounter` — plain visit/consultation encounters never carry it. For a `TRANSFER_ENCOUNTER`, `location[0].location` holds the transfer **destination**, not the reporting/source facility, so `hospitalization.origin` is checked first and is the correct source facility; `location[0]` is the fallback used by the non-transfer encounter types that have no `hospitalization` at all. The `source-facility` extension is deliberately never consulted for `Encounter` — it does not reliably distinguish origin from destination and is superseded by reading `hospitalization.origin` directly.
 
-If the CloudEvent envelope already carries a `facilityid` extension attribute (set by the emitter), that value is used directly as the ID without re-parsing the payload — but the display name is still resolved from the FHIR body's matching reference node, not assumed to match whatever node the extraction happens to iterate first. Failures are non-fatal — a warning is logged and compliance processing continues unaffected.
+If the CloudEvent envelope already carries a `facilityid` extension attribute (set by the emitter), that value is used directly as the ID without re-parsing the payload. Likewise, if the envelope carries a `facilityname` extension attribute, it is used directly as the name; only when it is absent or blank does resolution fall back to the FHIR body's matching reference node's `display` field. Failures are non-fatal — a warning is logged and compliance processing continues unaffected.
 
 ### Design Notes
 

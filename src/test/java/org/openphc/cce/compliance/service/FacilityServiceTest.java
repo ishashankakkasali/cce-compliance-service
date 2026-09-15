@@ -334,6 +334,92 @@ class FacilityServiceTest {
         assertEquals("Vaccination Centre", captor.getValue().getFacilityName());
     }
 
+    // ── Envelope facilityname (preferred) vs. FHIR display field (fallback) ────
+
+    @Test
+    void envelopeFacilityName_takesPrecedenceOverPayloadDisplay() throws Exception {
+        String payload = """
+                {
+                  "resourceType": "ServiceRequest",
+                  "locationReference": [{ "reference": "Location/1302", "display": "NCD Upazila" }]
+                }
+                """;
+        CloudEventMessage event = eventWith("1302", "NCD Upazila Envelope Name", payload);
+        when(facilityRepository.findByFacilityId("1302")).thenReturn(Optional.empty());
+        when(facilityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertFacility(event);
+
+        ArgumentCaptor<Facility> captor = ArgumentCaptor.forClass(Facility.class);
+        verify(facilityRepository).save(captor.capture());
+        assertEquals("1302", captor.getValue().getFacilityId());
+        assertEquals("NCD Upazila Envelope Name", captor.getValue().getFacilityName());
+    }
+
+    @Test
+    void noEnvelopeFacilityName_fallsBackToPayloadDisplay() throws Exception {
+        String payload = """
+                {
+                  "resourceType": "ServiceRequest",
+                  "locationReference": [{ "reference": "Location/1302", "display": "NCD Upazila" }]
+                }
+                """;
+        CloudEventMessage event = eventWith("1302", null, payload);
+        when(facilityRepository.findByFacilityId("1302")).thenReturn(Optional.empty());
+        when(facilityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertFacility(event);
+
+        ArgumentCaptor<Facility> captor = ArgumentCaptor.forClass(Facility.class);
+        verify(facilityRepository).save(captor.capture());
+        assertEquals("1302", captor.getValue().getFacilityId());
+        assertEquals("NCD Upazila", captor.getValue().getFacilityName());
+    }
+
+    @Test
+    void blankEnvelopeFacilityName_fallsBackToPayloadDisplay() throws Exception {
+        String payload = """
+                {
+                  "resourceType": "ServiceRequest",
+                  "locationReference": [{ "reference": "Location/1302", "display": "NCD Upazila" }]
+                }
+                """;
+        CloudEventMessage event = eventWith("1302", "   ", payload);
+        when(facilityRepository.findByFacilityId("1302")).thenReturn(Optional.empty());
+        when(facilityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertFacility(event);
+
+        ArgumentCaptor<Facility> captor = ArgumentCaptor.forClass(Facility.class);
+        verify(facilityRepository).save(captor.capture());
+        assertEquals("NCD Upazila", captor.getValue().getFacilityName());
+    }
+
+    @Test
+    void envelopeFacilityName_usedEvenWithoutFhirLocation_sourceFacilityExtensionCase() throws Exception {
+        // Observation has no FHIR location/display at all, so the envelope facilityname is the
+        // only possible source of a name here.
+        String payload = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "extension": [
+                    { "url": "http://example.org/fhir/StructureDefinition/source-facility", "valueString": "0007" }
+                  ]
+                }
+                """;
+        CloudEventMessage event = eventWith(null, "Kamiriithu Health Centre", payload);
+        when(facilityRepository.findByFacilityId("0007")).thenReturn(Optional.empty());
+        when(facilityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.upsertFacility(event);
+
+        ArgumentCaptor<Facility> captor = ArgumentCaptor.forClass(Facility.class);
+        verify(facilityRepository).save(captor.capture());
+        assertEquals("0007", captor.getValue().getFacilityId());
+        assertEquals("Kamiriithu Health Centre", captor.getValue().getFacilityName());
+    }
+
     // ── Case 1: id present, name absent → insert with null name ───────────────
 
     @Test
@@ -515,8 +601,13 @@ class FacilityServiceTest {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private CloudEventMessage eventWith(String facilityId, String json) throws Exception {
+        return eventWith(facilityId, null, json);
+    }
+
+    private CloudEventMessage eventWith(String facilityId, String facilityName, String json) throws Exception {
         return CloudEventMessage.builder()
                 .facilityid(facilityId)
+                .facilityname(facilityName)
                 .data(mapper.readTree(json))
                 .build();
     }

@@ -192,6 +192,7 @@ All Kafka messages use **CloudEvents spec field names (lowercase)** — no camel
   "protocoldefinitionid": null,
   "actionid": null,
   "facilityid": "0002",
+  "facilityname": "Kigali South Health Post",
   "data": {
     "resourceType": "Observation",
     "code": {
@@ -237,6 +238,7 @@ All Kafka messages use **CloudEvents spec field names (lowercase)** — no camel
 | `protocoldefinitionid` | No | String (UUID) | Pre-populated if source knows the target protocol (usually null — Compliance Service resolves) |
 | `actionid` | No | String | Pre-populated if source knows the target action/step (usually null — Compliance Service resolves) |
 | `facilityid` | No | String | Healthcare facility FOSA ID (e.g., `0002`) |
+| `facilityname` | No | String | Healthcare facility display name (e.g., `Kigali South Health Post`). Preferred over the FHIR body's reference `display` field when present — see [Data Dictionary](data-dictionary.md#auto-population-behaviour). |
 | **Payload:** | | | |
 | `data` | Yes | Map | Event payload — FHIR R4 resource (when `datacontenttype` = `application/fhir+json`) or valid JSON object (when `datacontenttype` = `application/json`). Always present (guaranteed by Collector). |
 
