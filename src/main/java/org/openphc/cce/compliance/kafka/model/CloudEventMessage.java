@@ -34,6 +34,7 @@ public class CloudEventMessage {
     private String protocoldefinitionid;
     private String actionid;
     private String facilityid;
+    private String facilityname;
 
     // ── Payload ──
     private JsonNode data;
